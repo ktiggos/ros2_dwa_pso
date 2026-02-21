@@ -25,4 +25,24 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
+add_executable(dwa_pso_planner
+  src/dwa_pso_planner.cpp
+)
+ament_target_dependencies(dwa_pso_planner
+  rclcpp
+  nav_msgs
+)
+
+target_include_directories(dwa_pso_planner
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+
+install(TARGETS
+  dwa_pso_planner
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+
 ament_package()
