@@ -4,6 +4,7 @@ DwaPsoPlanner::DwaPsoPlanner()
 : Node("dwa_pso_planner")
 {
     sub_group_ = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
+    planner_group_ = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
     
     rclcpp::SubscriptionOptions opts;
     opts.callback_group = sub_group_;
@@ -20,35 +21,31 @@ DwaPsoPlanner::DwaPsoPlanner()
         opts
     );
 
-    opts.callback_group = planner_group_;
-
     planner_timer_ = this->create_wall_timer(
         std::chrono::milliseconds(100),
         [this](){
             this->plannerCB();
-        }
+        },
+        planner_group_
     );
 }
 
 void DwaPsoPlanner::plannerCB(){
     rclcpp::Rate rate(10.0);
 
-    while(rclcpp::ok()){
+    nav_msgs::msg::Odometry odom;
 
-        nav_msgs::msg::Odometry odom;
-
-        if(have_odom){
-            std::lock_guard<std::mutex> lk(odom_mtx);
-            odom = last_odom;
-        }else{
-            rate.sleep();
-            continue;
-        }
-
-        RCLCPP_INFO(this->get_logger(),"DWA + PSO LOOP");
-
+    if(have_odom){
+        std::lock_guard<std::mutex> lk(odom_mtx);
+        odom = last_odom;
+    }else{
         rate.sleep();
+        return;
     }
+
+    RCLCPP_INFO(this->get_logger(),"DWA + PSO LOOP");
+
+    rate.sleep();
 }
 
 void DwaPsoPlanner::odomCB(const nav_msgs::msg::Odometry::SharedPtr msg)
