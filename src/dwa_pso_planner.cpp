@@ -31,7 +31,24 @@ DwaPsoPlanner::DwaPsoPlanner()
 }
 
 void DwaPsoPlanner::plannerCB(){
-    RCLCPP_INFO(this->get_logger(), "planner cb");
+    rclcpp::Rate rate(10.0);
+
+    while(rclcpp::ok()){
+
+        nav_msgs::msg::Odometry odom;
+
+        if(have_odom){
+            std::lock_guard<std::mutex> lk(odom_mtx);
+            odom = last_odom;
+        }else{
+            rate.sleep();
+            continue;
+        }
+
+        RCLCPP_INFO(this->get_logger(),"DWA + PSO LOOP");
+
+        rate.sleep();
+    }
 }
 
 void DwaPsoPlanner::odomCB(const nav_msgs::msg::Odometry::SharedPtr msg)
