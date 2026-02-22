@@ -9,8 +9,16 @@ class DwaPsoPlanner : public rclcpp::Node {
         DwaPsoPlanner();
     
     private:
-        rclcpp::Logger logger {this->get_logger()};
+        void odomCB(const nav_msgs::msg::Odometry::SharedPtr msg);
+
+        rclcpp::CallbackGroup::SharedPtr sub_group_;
+        rclcpp::CallbackGroup::SharedPtr planner_group_;
+
         rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr sub_;
+
+        std::mutex odom_mtx;
+        nav_msgs::msg::Odometry last_odom;
+        bool have_odom {false};
 };
 
 #endif
