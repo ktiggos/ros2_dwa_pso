@@ -19,6 +19,19 @@ DwaPsoPlanner::DwaPsoPlanner()
         },
         opts
     );
+
+    opts.callback_group = planner_group_;
+
+    planner_timer_ = this->create_wall_timer(
+        std::chrono::milliseconds(100),
+        [this](){
+            this->plannerCB();
+        }
+    );
+}
+
+void DwaPsoPlanner::plannerCB(){
+    RCLCPP_INFO(this->get_logger(), "planner cb");
 }
 
 void DwaPsoPlanner::odomCB(const nav_msgs::msg::Odometry::SharedPtr msg)

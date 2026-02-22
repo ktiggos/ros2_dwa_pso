@@ -10,11 +10,13 @@ class DwaPsoPlanner : public rclcpp::Node {
     
     private:
         void odomCB(const nav_msgs::msg::Odometry::SharedPtr msg);
+        void plannerCB();
 
         rclcpp::CallbackGroup::SharedPtr sub_group_;
         rclcpp::CallbackGroup::SharedPtr planner_group_;
 
         rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr sub_;
+        rclcpp::TimerBase::SharedPtr planner_timer_;
 
         std::mutex odom_mtx;
         nav_msgs::msg::Odometry last_odom;
