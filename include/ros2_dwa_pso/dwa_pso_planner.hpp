@@ -4,30 +4,46 @@
 #include <rclcpp/rclcpp.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <geometry_msgs/msg/twist.hpp>
+#include <geometry_msgs/msg/point.hpp>
 #include <mutex>
 #include <atomic>
 
 class DwaPsoPlanner : public rclcpp::Node {
-    struct vel {
-            double linear;
-            double angular;
-        };
-    struct acc {
-        double linear;
-        double angular;
-    };
-    struct dynamic_limits {
-        vel max_vel;
-        acc max_acc;
-    };
 
     public:
         DwaPsoPlanner();
+
+        struct vel {
+            double linear;
+            double angular;
+        };
+        struct acc {
+            double linear;
+            double angular;
+        };
+        struct dynamic_limits {
+            vel max_vel;
+            acc max_acc;
+        };
     
     private:
         void odomCB(const nav_msgs::msg::Odometry::SharedPtr msg);
+
         void plannerCB();
-        vel compute_dynamic_window(const nav_msgs::msg::Odometry odom);
+
+        vel compute_dynamic_window(const nav_msgs::msg::Odometry& odom);
+
+        geometry_msgs::msg::Twist pso_optimize_cmd(
+            const nav_msgs::msg::Odometry& odom, 
+            const vel& wnd
+        );
+
+        double eval_cost(const nav_msgs::msg::Odometry& odom, const double v, const double w);
+
+        void eval_trajectory(const nav_msgs::msg::Odometry& odom,
+            const double v, const double w,
+            double &x_hat, double &y_hat, double &phi_hat
+        );
 
         rclcpp::CallbackGroup::SharedPtr sub_group_;
         rclcpp::CallbackGroup::SharedPtr planner_group_;
@@ -40,10 +56,22 @@ class DwaPsoPlanner : public rclcpp::Node {
         std::atomic<bool> have_odom{false};
         
         geometry_msgs::msg::Twist cmd_vel;
-
-        // ROS-params                                                    
+        
+        geometry_msgs::msg::Point goal;
+        
+        // ROS-params
+        // DWA                                            
         dynamic_limits limits{{10.0, 5.0}, {2.0, 5.0}};
         double dt_ms{100.0};
+        // PSO
+        size_t imax{30}; // max iterations
+        double eps_cost{1e-4};
+        double eps_pos{1e-3};
+        int patience{5};
+        int n_par{30}; // particle number
+        double alpha{1.0};
+        double gamma{0.2}; 
+
 };
 
 #endif
