@@ -21,7 +21,7 @@ DwaPsoPlanner::DwaPsoPlanner()
     );
 
     planner_timer_ = this->create_wall_timer(
-        std::chrono::milliseconds(100),
+        std::chrono::milliseconds((int64_t)dt_ms),
         [this](){
             this->plannerCB();
         },
@@ -39,13 +39,42 @@ void DwaPsoPlanner::plannerCB() {
         return;
     }
 
-    RCLCPP_INFO(this->get_logger(),"DWA΅ + PSO LOOP");
+    RCLCPP_INFO(this->get_logger(),"DWA + PSO LOOP");
 }
 
 void DwaPsoPlanner::odomCB(const nav_msgs::msg::Odometry::SharedPtr msg) {
     std::lock_guard<std::mutex> lk(odom_mtx);
     last_odom = *msg;
     have_odom.store(true, std::memory_order_release);
+}
+
+DwaPsoPlanner::vel DwaPsoPlanner::compute_dynamic_window(
+    const nav_msgs::msg::Odometry odom
+) {
+
+    // Init dynamic window with vel limits
+    vel wnd {
+        this->limits.max_vel.linear,
+        this->limits.max_vel.angular
+    };
+
+    const geometry_msgs::msg::Twist vel_prev {
+        odom.twist.twist
+    };
+
+    double v_max {
+        vel_prev.linear.x + limits.max_acc.linear * (dt_ms * 1e-3)
+    };
+
+    double w_max {
+        vel_prev.angular.z + limits.max_acc.angular * (dt_ms * 1e-3)
+    };
+
+    // Update dynamic window based on acc limits
+    wnd.linear = std::min(wnd.linear, v_max);
+    wnd.angular = std::min(wnd.angular, w_max);
+
+    return wnd;
 }
 
 int main(int argc, char* argv[]) {
