@@ -39,7 +39,9 @@ void DwaPsoPlanner::plannerCB() {
         return;
     }
 
-    RCLCPP_INFO(this->get_logger(),"DWA + PSO LOOP");
+    vel wnd{ compute_dynamic_window(odom) };
+
+    RCLCPP_INFO(this->get_logger(),"%f, %f", wnd.linear, wnd.angular);
 }
 
 void DwaPsoPlanner::odomCB(const nav_msgs::msg::Odometry::SharedPtr msg) {
@@ -58,16 +60,16 @@ DwaPsoPlanner::vel DwaPsoPlanner::compute_dynamic_window(
         this->limits.max_vel.angular
     };
 
-    const geometry_msgs::msg::Twist vel_prev {
+    const geometry_msgs::msg::Twist vel_curr {
         odom.twist.twist
     };
 
     double v_max {
-        vel_prev.linear.x + limits.max_acc.linear * (dt_ms * 1e-3)
+        vel_curr.linear.x + limits.max_acc.linear * (dt_ms * 1e-3)
     };
 
     double w_max {
-        vel_prev.angular.z + limits.max_acc.angular * (dt_ms * 1e-3)
+        vel_curr.angular.z + limits.max_acc.angular * (dt_ms * 1e-3)
     };
 
     // Update dynamic window based on acc limits

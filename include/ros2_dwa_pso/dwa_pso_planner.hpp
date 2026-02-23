@@ -40,7 +40,6 @@ class DwaPsoPlanner : public rclcpp::Node {
         std::atomic<bool> have_odom{false};
         
         geometry_msgs::msg::Twist cmd_vel;
-        // geometry_msgs::msg::Twist vel_prev;
 
         // ROS-params                                                    
         dynamic_limits limits{{10.0, 5.0}, {2.0, 5.0}};
