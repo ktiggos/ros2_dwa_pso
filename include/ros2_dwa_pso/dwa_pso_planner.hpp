@@ -3,6 +3,8 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <nav_msgs/msg/odometry.hpp>
+#include <mutex>
+#include <atomic>
 
 class DwaPsoPlanner : public rclcpp::Node {
     public:
@@ -20,7 +22,7 @@ class DwaPsoPlanner : public rclcpp::Node {
 
         std::mutex odom_mtx;
         nav_msgs::msg::Odometry last_odom;
-        bool have_odom {false};
+        std::atomic<bool> have_odom {false};
 };
 
 #endif

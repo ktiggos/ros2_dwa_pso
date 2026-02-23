@@ -1,8 +1,7 @@
 #include "ros2_dwa_pso/dwa_pso_planner.hpp"
 
 DwaPsoPlanner::DwaPsoPlanner()
-: Node("dwa_pso_planner")
-{
+: Node("dwa_pso_planner") {
     sub_group_ = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
     planner_group_ = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
     
@@ -30,32 +29,26 @@ DwaPsoPlanner::DwaPsoPlanner()
     );
 }
 
-void DwaPsoPlanner::plannerCB(){
-    rclcpp::Rate rate(10.0);
-
+void DwaPsoPlanner::plannerCB() {
     nav_msgs::msg::Odometry odom;
 
-    if(have_odom){
+    if(have_odom.load(std::memory_order_acquire)){
         std::lock_guard<std::mutex> lk(odom_mtx);
         odom = last_odom;
     }else{
-        rate.sleep();
         return;
     }
 
-    RCLCPP_INFO(this->get_logger(),"DWA + PSO LOOP");
-
-    rate.sleep();
+    RCLCPP_INFO(this->get_logger(),"DWA΅ + PSO LOOP");
 }
 
-void DwaPsoPlanner::odomCB(const nav_msgs::msg::Odometry::SharedPtr msg)
-{
+void DwaPsoPlanner::odomCB(const nav_msgs::msg::Odometry::SharedPtr msg) {
     std::lock_guard<std::mutex> lk(odom_mtx);
     last_odom = *msg;
-    have_odom = true;
+    have_odom.store(true, std::memory_order_release);
 }
 
-int main(int argc, char* argv[]){
+int main(int argc, char* argv[]) {
     rclcpp::init(argc, argv);
 
     DwaPsoPlanner::SharedPtr node = std::make_shared<DwaPsoPlanner>();
