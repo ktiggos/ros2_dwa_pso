@@ -31,6 +31,9 @@ add_executable(dwa_pso_planner
 ament_target_dependencies(dwa_pso_planner
   rclcpp
   nav_msgs
+  geometry_msgs
+  tf2_ros
+  tf2   
 )
 
 target_include_directories(dwa_pso_planner
