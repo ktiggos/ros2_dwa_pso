@@ -13,7 +13,7 @@ class DwaPsoPlanner : public rclcpp::Node {
     public:
         DwaPsoPlanner();
 
-        struct dynamic_limits {
+        struct DynamicLimits {
             struct vel {
                 double linear;
                 double angular;
@@ -64,9 +64,10 @@ class DwaPsoPlanner : public rclcpp::Node {
         geometry_msgs::msg::Point goal;
         
         // ROS-params
-        // DWA                                            
-        dynamic_limits limits{{10.0, 5.0}, {2.0, 5.0}};
+        // DWA                                    
         double dt_ms{100.0};
+        double eps_goal{1e-3};
+        DynamicLimits limits{{10.0, 5.0}, {2.0, 5.0}};
         // PSO
         size_t imax{30}; // max iterations
         double eps_cost{1e-4};
