@@ -9,6 +9,11 @@ from launch_ros.actions import Node
 def generate_launch_description():
 
     args = [
+        ################### SET GOAL HERE ###################
+        DeclareLaunchArgument("goal_x", default_value="2.0"),
+        DeclareLaunchArgument("goal_y", default_value="1.0"),
+        #####################################################
+
         DeclareLaunchArgument("controller_step_ms", default_value="100.0"),
         DeclareLaunchArgument("eps_goal",           default_value="1e-2"),
 
@@ -39,6 +44,9 @@ def generate_launch_description():
         name="dwa_pso_planner",
         output="screen",
         parameters=[{
+            "goal_x": LaunchConfiguration("goal_x"),
+            "goal_y": LaunchConfiguration("goal_y"),
+
             "dt_ms":      LaunchConfiguration("controller_step_ms"),
             "eps_goal":   LaunchConfiguration("eps_goal"),
 
