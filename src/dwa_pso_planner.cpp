@@ -127,10 +127,10 @@ geometry_msgs::msg::Twist DwaPsoPlanner::pso_optimize_cmd(
     const window& wnd
 )
 {
-    const double c1 = 2.0;
-    const double c2 = 2.0;
-    const double w_in  = 0.9;
-    const double w_end = 0.4;
+    const double c1 = this->acc_cog;
+    const double c2 = this->acc_soc;
+    const double w_in  = this->iner_start;
+    const double w_end = this->iner_end;
 
     const double v_min = wnd.v_min;
     const double v_max = wnd.v_max;

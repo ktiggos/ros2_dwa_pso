@@ -63,23 +63,33 @@ class DwaPsoPlanner : public rclcpp::Node {
         
         geometry_msgs::msg::Point goal;
         
-        // ROS-params
+        /*
+        -------------- ROS params --------------
+        */
+
         // DWA                                    
         double dt_ms{100.0};
         double eps_goal{1e-2};
         DynamicLimits limits{{10.0, 5.0}, {2.0, 5.0}};
+        double alpha{1.0};
+        double gamma{0.2}; 
+
         // PSO
         size_t imax{30}; // max iterations
         int n_par{30}; // particle number
 
-        double alpha{1.0};
-        double gamma{0.2}; 
-
         double eps_head{1e-2};
         double eps_cost{1e-4};
-        double eps_pos{1e-3};
         int patience{5};
 
+        double acc_cog{2.0};
+        double acc_soc{2.0};
+        double iner_start{0.9};
+        double iner_end{0.4};
+
+        /*
+        -------------- ROS params --------------
+        */
 };
 
 #endif
