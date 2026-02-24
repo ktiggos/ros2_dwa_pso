@@ -12,8 +12,8 @@
 
 DwaPsoPlanner::DwaPsoPlanner()
 : Node("dwa_pso_planner") {
-    goal.x = 5.0;
-    goal.y = 0.0;
+    goal.x = 2.0;
+    goal.y = 1.0;
     goal.z = 0.0;
 
     sub_group_ = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
@@ -263,7 +263,16 @@ double DwaPsoPlanner::eval_cost(const nav_msgs::msg::Odometry& odom,
     const double dy = this->goal.y - y_hat;
 
     const double goal_bearing = std::atan2(dy, dx);
-    double head_score = std::cos(phi_hat - goal_bearing);
+
+    const double dphi = phi_hat - goal_bearing;
+    double head_score;
+
+    if(abs(dphi) < this->eps_head){
+        head_score = 0.0;
+    } else {
+        head_score = std::cos(dphi);
+    }
+    
 
     // Return objective function cost value
     return -(this->alpha * head_score + this->gamma * v);

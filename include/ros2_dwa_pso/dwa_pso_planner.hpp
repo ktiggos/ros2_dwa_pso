@@ -70,12 +70,15 @@ class DwaPsoPlanner : public rclcpp::Node {
         DynamicLimits limits{{10.0, 5.0}, {2.0, 5.0}};
         // PSO
         size_t imax{30}; // max iterations
+        int n_par{30}; // particle number
+
+        double alpha{1.0};
+        double gamma{0.2}; 
+
+        double eps_head{1e-2};
         double eps_cost{1e-4};
         double eps_pos{1e-3};
         int patience{5};
-        int n_par{30}; // particle number
-        double alpha{1.0};
-        double gamma{0.2}; 
 
 };
 
