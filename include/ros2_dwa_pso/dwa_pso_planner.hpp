@@ -50,6 +50,8 @@ class DwaPsoPlanner : public rclcpp::Node {
             double &x_hat, double &y_hat, double &phi_hat
         );
 
+        void get_params();
+
         rclcpp::CallbackGroup::SharedPtr sub_group_;
         rclcpp::CallbackGroup::SharedPtr planner_group_;
 
@@ -61,11 +63,10 @@ class DwaPsoPlanner : public rclcpp::Node {
         nav_msgs::msg::Odometry last_odom;
         std::atomic<bool> have_odom{false};
         
-        geometry_msgs::msg::Point goal;
-        
         /*
         -------------- ROS params --------------
         */
+        geometry_msgs::msg::Point goal;
 
         // DWA                                    
         double dt_ms{100.0};
@@ -86,7 +87,6 @@ class DwaPsoPlanner : public rclcpp::Node {
         double acc_soc{2.0};
         double iner_start{0.9};
         double iner_end{0.4};
-
         /*
         -------------- ROS params --------------
         */

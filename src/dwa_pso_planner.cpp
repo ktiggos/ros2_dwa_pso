@@ -16,6 +16,8 @@ DwaPsoPlanner::DwaPsoPlanner()
     goal.y = 1.0;
     goal.z = 0.0;
 
+    this->get_params();
+
     sub_group_ = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
     planner_group_ = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
     
@@ -265,7 +267,6 @@ double DwaPsoPlanner::eval_cost(const nav_msgs::msg::Odometry& odom,
     const double goal_bearing = std::atan2(dy, dx);
     const double head_score = std::cos(phi_hat - goal_bearing);
     
-
     // Return objective function cost value
     return -(this->alpha * head_score + this->gamma * v);
 }
@@ -315,6 +316,65 @@ void DwaPsoPlanner::eval_trajectory(const nav_msgs::msg::Odometry& odom,
     }
 }
 
+void DwaPsoPlanner::get_params() {
+
+    // Declare params
+    this->declare_parameter<double>("goal_x", 2.0);
+    this->declare_parameter<double>("goal_y", 1.0);
+
+    this->declare_parameter<double>("dt_ms", this->dt_ms);
+    this->declare_parameter<double>("eps_goal", this->eps_goal);
+
+    this->declare_parameter<double>("limits.max_vel.linear",  this->limits.max_vel.linear);
+    this->declare_parameter<double>("limits.max_vel.angular", this->limits.max_vel.angular);
+    this->declare_parameter<double>("limits.max_acc.linear",  this->limits.max_acc.linear);
+    this->declare_parameter<double>("limits.max_acc.angular", this->limits.max_acc.angular);
+
+    this->declare_parameter<double>("alpha", this->alpha);
+    this->declare_parameter<double>("gamma", this->gamma);
+
+    this->declare_parameter<int>("imax", static_cast<int>(this->imax));
+    this->declare_parameter<int>("n_par", this->n_par);
+
+    this->declare_parameter<double>("eps_head", this->eps_head);
+    this->declare_parameter<double>("eps_cost", this->eps_cost);
+    this->declare_parameter<int>("patience", this->patience);
+
+    this->declare_parameter<double>("acc_cog", this->acc_cog);
+    this->declare_parameter<double>("acc_soc", this->acc_soc);
+    this->declare_parameter<double>("iner_start", this->iner_start);
+    this->declare_parameter<double>("iner_end", this->iner_end);
+
+    // Get params
+    this->get_parameter("goal_x", this->goal.x);
+    this->get_parameter("goal_y", this->goal.y);
+
+    this->get_parameter("dt_ms", this->dt_ms);
+    this->get_parameter("eps_goal", this->eps_goal);
+
+    this->get_parameter("limits.max_vel.linear",  this->limits.max_vel.linear);
+    this->get_parameter("limits.max_vel.angular", this->limits.max_vel.angular);
+    this->get_parameter("limits.max_acc.linear",  this->limits.max_acc.linear);
+    this->get_parameter("limits.max_acc.angular", this->limits.max_acc.angular);
+
+    this->get_parameter("alpha", this->alpha);
+    this->get_parameter("gamma", this->gamma);
+
+    int imax_tmp;
+    this->get_parameter("imax", imax_tmp);
+    this->imax = static_cast<size_t>(imax_tmp);
+
+    this->get_parameter("n_par", this->n_par);
+
+    this->get_parameter("eps_head", this->eps_head);
+    this->get_parameter("eps_cost", this->eps_cost);
+    this->get_parameter("patience", this->patience);
+
+    this->get_parameter("acc_cog", this->acc_cog);
+    this->get_parameter("acc_soc", this->acc_soc);
+    this->get_parameter("iner_start", this->iner_start);
+    this->get_parameter("iner_end", this->iner_end);
+}
 
 int main(int argc, char* argv[]) {
     rclcpp::init(argc, argv);
