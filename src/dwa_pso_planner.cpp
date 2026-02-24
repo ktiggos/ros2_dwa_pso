@@ -78,6 +78,21 @@ void DwaPsoPlanner::plannerCB()
     cmd_vel.linear.x  = std::clamp(cmd_vel.linear.x,  wnd.v_min, wnd.v_max);
     cmd_vel.angular.z = std::clamp(cmd_vel.angular.z, wnd.w_min, wnd.w_max);
 
+    // Terminate cmd when goal reached
+    double dx = goal.x - odom.pose.pose.position.x;
+    double dy = goal.y - odom.pose.pose.position.y;
+    double goal_err = std::hypot(dx,dy);
+
+    if(goal_err < this->eps_goal) {
+        cmd_vel.linear.x = 0.0;
+        cmd_vel.linear.y = 0.0;
+        cmd_vel.linear.z = 0.0;
+
+        cmd_vel.angular.x = 0.0;
+        cmd_vel.angular.y = 0.0;
+        cmd_vel.angular.z = 0.0;
+    }
+
     pub_->publish(cmd_vel);
 }
 
