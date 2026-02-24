@@ -13,17 +13,22 @@ class DwaPsoPlanner : public rclcpp::Node {
     public:
         DwaPsoPlanner();
 
-        struct vel {
-            double linear;
-            double angular;
-        };
-        struct acc {
-            double linear;
-            double angular;
-        };
         struct dynamic_limits {
+            struct vel {
+                double linear;
+                double angular;
+            };
+            struct acc {
+                double linear;
+                double angular;
+            };
             vel max_vel;
             acc max_acc;
+        };
+
+        struct window {
+            double v_min, v_max;
+            double w_min, w_max;
         };
     
     private:
@@ -31,11 +36,11 @@ class DwaPsoPlanner : public rclcpp::Node {
 
         void plannerCB();
 
-        vel compute_dynamic_window(const nav_msgs::msg::Odometry& odom);
+        window compute_dynamic_window(const nav_msgs::msg::Odometry& odom);
 
         geometry_msgs::msg::Twist pso_optimize_cmd(
             const nav_msgs::msg::Odometry& odom, 
-            const vel& wnd
+            const window& wnd
         );
 
         double eval_cost(const nav_msgs::msg::Odometry& odom, const double v, const double w);
@@ -49,13 +54,12 @@ class DwaPsoPlanner : public rclcpp::Node {
         rclcpp::CallbackGroup::SharedPtr planner_group_;
 
         rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr sub_;
+        rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_;
         rclcpp::TimerBase::SharedPtr planner_timer_;
 
         std::mutex odom_mtx;
         nav_msgs::msg::Odometry last_odom;
         std::atomic<bool> have_odom{false};
-        
-        geometry_msgs::msg::Twist cmd_vel;
         
         geometry_msgs::msg::Point goal;
         
