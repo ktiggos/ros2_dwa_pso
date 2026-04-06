@@ -30,6 +30,25 @@ class DwaPsoPlanner : public rclcpp::Node {
             double v_min, v_max;
             double w_min, w_max;
         };
+
+        struct trajectory {
+            bool IS_LINEAR;
+            struct origin {
+                double x0;
+                double y0;
+                double phi0;
+            } origin;
+            struct predicted_pose {
+                double x_hat;
+                double y_hat;
+                double phi_hat;
+            } predicted_pose;
+            struct center {
+                double xc;
+                double yc;
+            } center;
+            double radius;
+        };
     
     private:
         void odomCB(const nav_msgs::msg::Odometry::SharedPtr msg);
@@ -45,9 +64,8 @@ class DwaPsoPlanner : public rclcpp::Node {
 
         double eval_cost(const nav_msgs::msg::Odometry& odom, const double v, const double w);
 
-        void eval_trajectory(const nav_msgs::msg::Odometry& odom,
-            const double v, const double w,
-            double &x_hat, double &y_hat, double &phi_hat
+        trajectory eval_trajectory(const nav_msgs::msg::Odometry& odom,
+            const double v, const double w
         );
 
         void get_params();

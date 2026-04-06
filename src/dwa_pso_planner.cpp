@@ -173,7 +173,7 @@ geometry_msgs::msg::Twist DwaPsoPlanner::pso_optimize_cmd(
         p.pbest_v = p.v;
         p.pbest_w = p.w;
         p.pbest_cost = p.cost;
-    }
+    } 
 
     double gbest_v = swarm.front().pbest_v;
     double gbest_w = swarm.front().pbest_w;
@@ -259,7 +259,11 @@ double DwaPsoPlanner::eval_cost(const nav_msgs::msg::Odometry& odom,
     double x_hat{0.0}, y_hat{0.0}, phi_hat{0.0};
 
     // Predict pose
-    eval_trajectory(odom, v, w, x_hat, y_hat, phi_hat);
+    trajectory traj = eval_trajectory(odom, v, w);
+
+    x_hat = traj.predicted_pose.x_hat;
+    y_hat = traj.predicted_pose.y_hat;
+    phi_hat = traj.predicted_pose.phi_hat;
 
     const double dx = this->goal.x - x_hat;
     const double dy = this->goal.y - y_hat;
@@ -271,13 +275,16 @@ double DwaPsoPlanner::eval_cost(const nav_msgs::msg::Odometry& odom,
     return -(this->alpha * head_score + this->gamma * v);
 }
 
-void DwaPsoPlanner::eval_trajectory(const nav_msgs::msg::Odometry& odom, 
-    const double v, const double w,
-    double &x_hat, double &y_hat, double &phi_hat
+DwaPsoPlanner::trajectory DwaPsoPlanner::eval_trajectory(
+    const nav_msgs::msg::Odometry& odom,
+    const double v,
+    const double w
 ) {
     constexpr double EPS_W = 1e-4;
 
-    tf2::Quaternion q {
+    trajectory traj{};
+
+    tf2::Quaternion q{
         odom.pose.pose.orientation.x,
         odom.pose.pose.orientation.y,
         odom.pose.pose.orientation.z,
@@ -285,7 +292,7 @@ void DwaPsoPlanner::eval_trajectory(const nav_msgs::msg::Odometry& odom,
     };
     tf2::Matrix3x3 m{q};
 
-    double roll, pitch, yaw; 
+    double roll, pitch, yaw;
     m.getRPY(roll, pitch, yaw);
 
     const double x0 = odom.pose.pose.position.x;
@@ -293,13 +300,12 @@ void DwaPsoPlanner::eval_trajectory(const nav_msgs::msg::Odometry& odom,
     const double phi0 = yaw;
     const double dt = this->dt_ms * 1e-3;
 
-    // Predicted orientation
-    phi_hat = phi0 + w * dt;
+    double phi_hat = phi0 + w * dt;
     phi_hat = std::atan2(std::sin(phi_hat), std::cos(phi_hat));
 
-    // Predicted pose 
+    double x_hat, y_hat;
+
     if (std::fabs(w) > EPS_W) {
-        // Constant-twist closed-form integration (circular arc)
         const double s0 = std::sin(phi0);
         const double c0 = std::cos(phi0);
         const double s1 = std::sin(phi0 + w * dt);
@@ -309,11 +315,34 @@ void DwaPsoPlanner::eval_trajectory(const nav_msgs::msg::Odometry& odom,
 
         x_hat = x0 + R * (s1 - s0);
         y_hat = y0 - R * (c1 - c0);
+
+        traj.IS_LINEAR = false;
+        traj.radius = R;
+
+        const double Mx = -R * std::sin(phi0);
+        const double My = +R * std::cos(phi0);
+
+        traj.center.xc = x0 + Mx;
+        traj.center.yc = y0 + My;
     } else {
-        // Straight-line approximation
         x_hat = x0 + v * dt * std::cos(phi0);
         y_hat = y0 + v * dt * std::sin(phi0);
+
+        traj.IS_LINEAR = true;
+        traj.radius = 0.0;
+        traj.center.xc = 0.0;
+        traj.center.yc = 0.0;
     }
+
+    traj.origin.x0 = x0;
+    traj.origin.y0 = y0;
+    traj.origin.phi0 = phi0;
+
+    traj.predicted_pose.x_hat = x_hat;
+    traj.predicted_pose.y_hat = y_hat;
+    traj.predicted_pose.phi_hat = phi_hat;
+
+    return traj;
 }
 
 void DwaPsoPlanner::get_params() {
