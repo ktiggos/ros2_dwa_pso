@@ -10,6 +10,8 @@
 #include <limits>
 #include <cmath>
 
+#define DEBUG
+
 DwaPsoPlanner::DwaPsoPlanner()
 : Node("dwa_pso_planner") {
     goal.x = 2.0;
@@ -108,6 +110,17 @@ void DwaPsoPlanner::plannerCB()
         cmd_vel.angular.y = 0.0;
         cmd_vel.angular.z = 0.0;
     }
+
+    // No movement during debug
+    #ifdef DEBUG
+        cmd_vel.linear.x = 0.0;
+        cmd_vel.linear.y = 0.0;
+        cmd_vel.linear.z = 0.0;
+
+        cmd_vel.angular.x = 0.0;
+        cmd_vel.angular.y = 0.0;
+        cmd_vel.angular.z = 0.0;
+    #endif
 
     pub_->publish(cmd_vel);
 }
