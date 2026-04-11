@@ -3,6 +3,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <nav_msgs/msg/odometry.hpp>
+#include <nav_msgs/msg/occupancy_grid.hpp>
 #include <geometry_msgs/msg/twist.hpp>
 #include <geometry_msgs/msg/point.hpp>
 #include <mutex>
@@ -53,34 +54,39 @@ class DwaPsoPlanner : public rclcpp::Node {
     private:
         void odomCB(const nav_msgs::msg::Odometry::SharedPtr msg);
 
+        void costmapCB(const nav_msgs::msg::OccupancyGrid::SharedPtr msg);
+
         void plannerCB();
 
         window compute_dynamic_window(const nav_msgs::msg::Odometry& odom);
 
-        geometry_msgs::msg::Twist pso_optimize_cmd(
-            const nav_msgs::msg::Odometry& odom, 
-            const window& wnd
-        );
+        geometry_msgs::msg::Twist pso_optimize_cmd(const window& wnd);
 
-        double eval_cost(const nav_msgs::msg::Odometry& odom, const double v, const double w);
+        double eval_cost(const double v, const double w);
 
         trajectory eval_trajectory(const nav_msgs::msg::Odometry& odom,
             const double v, const double w
         );
+
+        bool check_collision(trajectory t);
 
         void get_params();
 
         rclcpp::CallbackGroup::SharedPtr sub_group_;
         rclcpp::CallbackGroup::SharedPtr planner_group_;
 
-        rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr sub_;
+        rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+        rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr costmap_sub_;
         rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_;
         rclcpp::TimerBase::SharedPtr planner_timer_;
 
         std::mutex odom_mtx;
-        nav_msgs::msg::Odometry last_odom;
+        nav_msgs::msg::Odometry last_odom, odom;
         std::atomic<bool> have_odom{false};
-        
+
+        std::mutex costmap_mtx;
+        nav_msgs::msg::OccupancyGrid last_costmap, costmap;
+        std::atomic<bool> have_costmap{false};
         /*
         -------------- ROS params --------------
         */

@@ -27,11 +27,20 @@ DwaPsoPlanner::DwaPsoPlanner()
     // Reliable quality of service for odom sub
     rclcpp::QoS qos = rclcpp::QoS(rclcpp::KeepLast(10)).reliable();
 
-    sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
+    odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
         "/odom",
         qos,
         [this](const nav_msgs::msg::Odometry::SharedPtr msg){
             this->odomCB(msg);
+        },
+        opts
+    );
+
+    costmap_sub_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
+        "/costmap/costmap",
+        qos,
+        [this](const nav_msgs::msg::OccupancyGrid::SharedPtr msg){
+            this->costmapCB(msg);
         },
         opts
     );
@@ -52,11 +61,16 @@ DwaPsoPlanner::DwaPsoPlanner()
 
 void DwaPsoPlanner::plannerCB()
 {
-    nav_msgs::msg::Odometry odom;
-
-    if (this->have_odom.load(std::memory_order_acquire)) {
+    if(this->have_odom.load(std::memory_order_acquire)) {
         std::lock_guard<std::mutex> lk(this->odom_mtx);
-        odom = this->last_odom;
+        this->odom = this->last_odom;
+    } else {
+        return;
+    }
+
+    if(this->have_costmap.load(std::memory_order_acquire)) {
+        std::lock_guard<std::mutex> lk(this->costmap_mtx);
+        this->costmap = this->last_costmap;
     } else {
         return;
     }
@@ -74,7 +88,7 @@ void DwaPsoPlanner::plannerCB()
     cmd_vel.angular.y = 0.0;
     cmd_vel.angular.z = 0.0;
 
-    cmd_vel = this->pso_optimize_cmd(odom, wnd);
+    cmd_vel = this->pso_optimize_cmd(wnd);
 
     // Optional safety: keep command inside window bounds
     cmd_vel.linear.x  = std::clamp(cmd_vel.linear.x,  wnd.v_min, wnd.v_max);
@@ -99,9 +113,19 @@ void DwaPsoPlanner::plannerCB()
 }
 
 void DwaPsoPlanner::odomCB(const nav_msgs::msg::Odometry::SharedPtr msg) {
+    // RCLCPP_INFO(this->get_logger(), "ODOM CB");
     std::lock_guard<std::mutex> lk(odom_mtx);
     last_odom = *msg;
     have_odom.store(true, std::memory_order_release);
+}
+
+void DwaPsoPlanner::costmapCB(const nav_msgs::msg::OccupancyGrid::SharedPtr msg) {
+    // RCLCPP_INFO(this->get_logger(), "COSTMAP CB");
+    std::lock_guard<std::mutex> lk(costmap_mtx);
+    last_costmap = * msg;
+    have_costmap.store(true, std::memory_order_release);
+
+    std::cout<<last_costmap.data.size()<<"\n";
 }
 
 DwaPsoPlanner::window DwaPsoPlanner::compute_dynamic_window(const nav_msgs::msg::Odometry& odom)
@@ -124,10 +148,7 @@ DwaPsoPlanner::window DwaPsoPlanner::compute_dynamic_window(const nav_msgs::msg:
     return wnd;
 }
 
-geometry_msgs::msg::Twist DwaPsoPlanner::pso_optimize_cmd(
-    const nav_msgs::msg::Odometry& odom,
-    const window& wnd
-)
+geometry_msgs::msg::Twist DwaPsoPlanner::pso_optimize_cmd(const window& wnd)
 {
     const double c1 = this->acc_cog;
     const double c2 = this->acc_soc;
@@ -169,7 +190,7 @@ geometry_msgs::msg::Twist DwaPsoPlanner::pso_optimize_cmd(
     for (auto &p : swarm) {
         p.v = univ(rng);
         p.w = uniw(rng);
-        p.cost = this->eval_cost(odom, p.v, p.w);
+        p.cost = this->eval_cost(p.v, p.w);
         p.pbest_v = p.v;
         p.pbest_w = p.w;
         p.pbest_cost = p.cost;
@@ -221,7 +242,7 @@ geometry_msgs::msg::Twist DwaPsoPlanner::pso_optimize_cmd(
             p.v = std::clamp(p.v, v_min, v_max);
             p.w = std::clamp(p.w, w_min, w_max);
 
-            p.cost = this->eval_cost(odom, p.v, p.w);
+            p.cost = this->eval_cost(p.v, p.w);
 
             if (p.cost < p.pbest_cost) {
                 p.pbest_cost = p.cost;
@@ -253,13 +274,14 @@ geometry_msgs::msg::Twist DwaPsoPlanner::pso_optimize_cmd(
     return out;
 }
 
-double DwaPsoPlanner::eval_cost(const nav_msgs::msg::Odometry& odom,
-                                const double v, const double w)
+double DwaPsoPlanner::eval_cost(const double v, const double w)
 {
     double x_hat{0.0}, y_hat{0.0}, phi_hat{0.0};
 
     // Predict pose
     trajectory traj = eval_trajectory(odom, v, w);
+
+    bool TRAJ_COLLISION = check_collision(traj);
 
     x_hat = traj.predicted_pose.x_hat;
     y_hat = traj.predicted_pose.y_hat;
@@ -344,6 +366,10 @@ DwaPsoPlanner::trajectory DwaPsoPlanner::eval_trajectory(
 
     return traj;
 }
+
+bool DwaPsoPlanner::check_collision(trajectory t){
+    // RCLCPP_INFO(this->get_logger(), "CHECK COLLISION");
+};
 
 void DwaPsoPlanner::get_params() {
 
