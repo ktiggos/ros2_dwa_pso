@@ -125,6 +125,10 @@ void DwaPsoPlanner::plannerCB()
     #endif
 
     pub_->publish(cmd_vel);
+
+    auto delta_t = (this->now() - t0).seconds();
+
+    // RCLCPP_INFO(this->get_logger(), "%f", delta_t);
 }
 
 void DwaPsoPlanner::odomCB(const nav_msgs::msg::Odometry::SharedPtr msg) {
