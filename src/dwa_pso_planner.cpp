@@ -499,6 +499,10 @@ int DwaPsoPlanner::get_cell_val(double x, double y){
     return this->costmap.data[j * w + i];
 }
 
+static double wrap_angle(double a) {
+    return std::atan2(std::sin(a), std::cos(a));
+}
+
 void DwaPsoPlanner::get_params() {
 
     // Declare params
