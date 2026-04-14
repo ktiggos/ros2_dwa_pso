@@ -63,6 +63,8 @@ DwaPsoPlanner::DwaPsoPlanner()
 
 void DwaPsoPlanner::plannerCB()
 {
+    auto t0 = this->now();
+
     if(this->have_odom.load(std::memory_order_acquire)) {
         std::lock_guard<std::mutex> lk(this->odom_mtx);
         this->odom = this->last_odom;
@@ -138,7 +140,10 @@ void DwaPsoPlanner::costmapCB(const nav_msgs::msg::OccupancyGrid::SharedPtr msg)
     last_costmap = * msg;
     have_costmap.store(true, std::memory_order_release);
 
-    std::cout<<last_costmap.data.size()<<"\n";
+    // #ifdef DEBUG
+    //     counter++;
+    //     RCLCPP_INFO(this->get_logger(), "costmapCB counter=%d", counter);
+    // #endif
 }
 
 DwaPsoPlanner::window DwaPsoPlanner::compute_dynamic_window(const nav_msgs::msg::Odometry& odom)
@@ -380,9 +385,102 @@ DwaPsoPlanner::trajectory DwaPsoPlanner::eval_trajectory(
     return traj;
 }
 
-bool DwaPsoPlanner::check_collision(trajectory t){
-    // RCLCPP_INFO(this->get_logger(), "CHECK COLLISION");
-};
+bool DwaPsoPlanner::check_collision(trajectory t) {
+    const double x0 = t.origin.x0;
+    const double y0 = t.origin.y0;
+    const double x_hat = t.predicted_pose.x_hat;
+    const double y_hat = t.predicted_pose.y_hat;
+    const double res = this->costmap.info.resolution;
+
+    double x = x0;
+    double y = y0;
+
+    if (t.IS_LINEAR) {
+        const double dx = x_hat - x0;
+        const double dy = y_hat - y0;
+        const double dist = std::hypot(dx, dy);
+
+        const size_t pnum = static_cast<size_t>(std::ceil(dist / res));
+        const double sgn_x = (dx >= 0.0) ? 1.0 : -1.0;
+        const double sgn_y = (dy >= 0.0) ? 1.0 : -1.0;
+
+        if (std::abs(dx) < 1e-6) {
+            for (size_t i = 0; i <= pnum; i++) {
+                x = x0;
+                y = y0 + sgn_y * i * res;
+                if (get_cell_val(x, y) > this->thr_cost) {
+                    return true;
+                }
+            }
+        } else if (std::abs(dy) < 1e-6) {
+            for (size_t i = 0; i <= pnum; i++) {
+                x = x0 + sgn_x * i * res;
+                y = y0;
+                if (get_cell_val(x, y) > this->thr_cost) {
+                    return true;
+                }
+            }
+        } else {
+            const double lamda = dy / dx;
+            for (size_t i = 0; i <= pnum; i++) {
+                x = x0 + sgn_x * i * res;
+                y = lamda * (x - x0) + y0;
+                if (get_cell_val(x, y) > this->thr_cost) {
+                    return true;
+                }
+            }
+        }
+    } else {
+        const double R = t.radius;
+        const double xc = t.center.xc;
+        const double yc = t.center.yc;
+
+        const double theta0 = std::atan2(y0 - yc, x0 - xc);
+        const double theta_hat = std::atan2(y_hat - yc, x_hat - xc);
+
+        // Signed angular displacement following the motion direction
+        double dtheta = wrap_angle(theta_hat - theta0);
+
+        // For positive omega / positive radius: CCW
+        // For negative omega / negative radius: CW
+        if (R > 0.0) {
+            if (dtheta < 0.0) {
+                dtheta += 2.0 * M_PI;
+            }
+        } else {
+            if (dtheta > 0.0) {
+                dtheta -= 2.0 * M_PI;
+            }
+        }
+
+        const double arc_len = std::abs(R * dtheta);
+        const size_t pnum = static_cast<size_t>(std::ceil(arc_len / res));
+
+        if (pnum == 0) {
+            if (get_cell_val(x0, y0) > this->thr_cost) {
+                return true;
+            }
+            if (get_cell_val(x_hat, y_hat) > this->thr_cost) {
+                return true;
+            }
+            return false;
+        }
+
+        const double step_theta = dtheta / static_cast<double>(pnum);
+
+        for (size_t i = 0; i <= pnum; i++) {
+            const double theta = theta0 + static_cast<double>(i) * step_theta;
+            x = xc + R * std::cos(theta);
+            y = yc + R * std::sin(theta);
+
+            if (get_cell_val(x, y) > this->thr_cost) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
 
 int DwaPsoPlanner::get_cell_val(double x, double y){
     const uint w = this->costmap.info.width;
