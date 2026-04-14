@@ -62,7 +62,7 @@ class DwaPsoPlanner : public rclcpp::Node {
 
         geometry_msgs::msg::Twist pso_optimize_cmd(const window& wnd);
 
-        double eval_cost(const double v, const double w);
+        double eval_cost(const double v, const double w, const size_t k);
 
         trajectory eval_trajectory(const nav_msgs::msg::Odometry& odom,
             const double v, const double w

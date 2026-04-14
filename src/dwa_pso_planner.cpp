@@ -228,7 +228,7 @@ geometry_msgs::msg::Twist DwaPsoPlanner::pso_optimize_cmd(const window& wnd)
     for (auto &p : swarm) {
         p.v = univ(rng);
         p.w = uniw(rng);
-        p.cost = this->eval_cost(p.v, p.w);
+        p.cost = this->eval_cost(p.v, p.w, 1);
         p.pbest_v = p.v;
         p.pbest_w = p.w;
         p.pbest_cost = p.cost;
@@ -280,7 +280,7 @@ geometry_msgs::msg::Twist DwaPsoPlanner::pso_optimize_cmd(const window& wnd)
             p.v = std::clamp(p.v, v_min, v_max);
             p.w = std::clamp(p.w, w_min, w_max);
 
-            p.cost = this->eval_cost(p.v, p.w);
+            p.cost = this->eval_cost(p.v, p.w, it);
 
             if (p.cost < p.pbest_cost) {
                 p.pbest_cost = p.cost;
@@ -312,7 +312,7 @@ geometry_msgs::msg::Twist DwaPsoPlanner::pso_optimize_cmd(const window& wnd)
     return out;
 }
 
-double DwaPsoPlanner::eval_cost(const double v, const double w)
+double DwaPsoPlanner::eval_cost(const double v, const double w, const size_t k)
 {
     double x_hat{0.0}, y_hat{0.0}, phi_hat{0.0};
 
@@ -330,9 +330,12 @@ double DwaPsoPlanner::eval_cost(const double v, const double w)
 
     const double goal_bearing = std::atan2(dy, dx);
     const double head_score = std::cos(phi_hat - goal_bearing);
+
+    const uint q = (TRAJ_COLLISION) ? 1 : 0;
     
     // Return objective function cost value
-    return -(this->alpha * head_score + this->gamma * v);
+    return -(this->alpha * head_score + this->gamma * v
+            - alpha_(k) * std::pow(beta_(q),2));
 }
 
 DwaPsoPlanner::trajectory DwaPsoPlanner::eval_trajectory(
@@ -517,10 +520,6 @@ int DwaPsoPlanner::get_cell_val(double x, double y){
     }
 
     return this->costmap.data[j * w + i];
-}
-
-static double wrap_angle(double a) {
-    return std::atan2(std::sin(a), std::cos(a));
 }
 
 void DwaPsoPlanner::get_params() {
