@@ -12,6 +12,22 @@
 
 #define DEBUG
 
+static double wrap_angle(double a) {
+    return std::atan2(std::sin(a), std::cos(a));
+}
+
+static double alpha_(const size_t k){
+    return std::sqrt(k);
+}
+
+static double beta_(const uint q){
+    if(q > 0){
+        return 100.0;
+    } else {
+        return 0.0;
+    }
+}
+
 DwaPsoPlanner::DwaPsoPlanner()
 : Node("dwa_pso_planner") {
     goal.x = 2.0;
