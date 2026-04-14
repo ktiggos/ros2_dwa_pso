@@ -70,6 +70,8 @@ class DwaPsoPlanner : public rclcpp::Node {
 
         bool check_collision(trajectory t);
 
+        int get_cell_val(double x, double y);
+
         void get_params();
 
         rclcpp::CallbackGroup::SharedPtr sub_group_;
@@ -111,6 +113,8 @@ class DwaPsoPlanner : public rclcpp::Node {
         double acc_soc{2.0};
         double iner_start{0.9};
         double iner_end{0.4};
+
+        size_t thr_cost{200};
         /*
         -------------- ROS params --------------
         */

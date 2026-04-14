@@ -384,6 +384,23 @@ bool DwaPsoPlanner::check_collision(trajectory t){
     // RCLCPP_INFO(this->get_logger(), "CHECK COLLISION");
 };
 
+int DwaPsoPlanner::get_cell_val(double x, double y){
+    const uint w = this->costmap.info.width;
+    const uint h = this->costmap.info.height;
+    const double lamda = this->costmap.info.resolution;
+    const double x0 = this->costmap.info.origin.position.x;
+    const double y0 = this->costmap.info.origin.position.y;
+
+    int i = static_cast<int>(std::floor((x - x0) / lamda));
+    int j = static_cast<int>(std::floor((y - y0) / lamda));
+
+    if (i < 0 || j < 0 || i >= static_cast<int>(w) || j >= static_cast<int>(h)){
+        return -1;
+    }
+
+    return this->costmap.data[j * w + i];
+}
+
 void DwaPsoPlanner::get_params() {
 
     // Declare params
