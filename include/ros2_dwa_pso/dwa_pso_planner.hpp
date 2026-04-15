@@ -48,6 +48,10 @@ class DwaPsoPlanner : public rclcpp::Node {
                 double xc;
                 double yc;
             } center;
+            struct vel {
+                double v;
+                double w;
+            } vel;
             double radius;
         };
     
@@ -89,6 +93,7 @@ class DwaPsoPlanner : public rclcpp::Node {
         std::mutex costmap_mtx;
         nav_msgs::msg::OccupancyGrid last_costmap, costmap;
         std::atomic<bool> have_costmap{false};
+
         /*
         -------------- ROS params --------------
         */
@@ -96,6 +101,7 @@ class DwaPsoPlanner : public rclcpp::Node {
 
         // DWA                                    
         double dt_ms{100.0};
+        double predict_time{2.0};
         double eps_goal{1e-2};
         DynamicLimits limits{{10.0, 5.0}, {2.0, 5.0}};
         double alpha{1.0};
@@ -114,7 +120,7 @@ class DwaPsoPlanner : public rclcpp::Node {
         double iner_start{0.9};
         double iner_end{0.4};
 
-        size_t thr_cost{200};
+        int thr_cost{80};
         /*
         -------------- ROS params --------------
         */
