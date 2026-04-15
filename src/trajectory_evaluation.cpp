@@ -35,9 +35,7 @@ double DwaPsoPlanner::eval_cost(const double v, const double w, const size_t k)
 
     bool TRAJ_COLLISION = check_collision(traj);
 
-    // if(TRAJ_COLLISION){
-    //     RCLCPP_INFO(this->get_logger(), "COLLISION: %i", static_cast<int>(TRAJ_COLLISION));
-    // }
+    this->tbest.COLLISION = TRAJ_COLLISION;
 
     x_hat = traj.predicted_pose.x_hat;
     y_hat = traj.predicted_pose.y_hat;
@@ -50,10 +48,13 @@ double DwaPsoPlanner::eval_cost(const double v, const double w, const size_t k)
     const double head_score = std::cos(phi_hat - goal_bearing);
 
     const uint q = (TRAJ_COLLISION) ? 1 : 0;
+
+    const double reward = this->alpha * head_score + this->gamma * v;
+    const double penalty = 100 * std::pow(beta_(q),2);
+    // const double penalty = 0.0;
     
     // Return objective function cost value
-    return -(this->alpha * head_score + this->gamma * v
-            - 100 * std::pow(beta_(q),2));
+    return ( penalty - reward );
 }
 
 DwaPsoPlanner::trajectory DwaPsoPlanner::eval_trajectory(
@@ -84,6 +85,7 @@ DwaPsoPlanner::trajectory DwaPsoPlanner::eval_trajectory(
     const double phi0 = yaw;
     // const double dt = this->dt_ms * 1e-3;
     const double dt = this->predict_time;
+    const double res = this->costmap.info.resolution;
 
     double phi_hat = phi0 + w * dt;
     phi_hat = std::atan2(std::sin(phi_hat), std::cos(phi_hat));
@@ -102,7 +104,7 @@ DwaPsoPlanner::trajectory DwaPsoPlanner::eval_trajectory(
         y_hat = y0 - R * (c1 - c0);
 
         traj.IS_LINEAR = false;
-        traj.radius = std::abs(R);
+        traj.radius = std::fabs(R);
 
         const double Mx = -R * std::sin(phi0);
         const double My = +R * std::cos(phi0);
@@ -127,6 +129,8 @@ DwaPsoPlanner::trajectory DwaPsoPlanner::eval_trajectory(
     traj.predicted_pose.y_hat = y_hat;
     traj.predicted_pose.phi_hat = phi_hat;
 
+    this->tbest = traj;
+
     return traj;
 }
 
@@ -140,18 +144,27 @@ bool DwaPsoPlanner::check_collision(trajectory t) {
     double x = x0;
     double y = y0;
 
+    geometry_msgs::msg::PoseStamped point;
+
+    point.pose.position.x = x;
+    point.pose.position.y = y;
+    this->tbest.path.poses.push_back(point);
+
     if (t.IS_LINEAR) {
         const double dx = x_hat - x0;
         const double dy = y_hat - y0;
         const double dist = std::hypot(dx, dy);
 
         const size_t pnum = static_cast<size_t>(std::ceil(dist / res));
-
         for (size_t i = 0; i <= pnum; i++) {
             const double s = std::min(static_cast<double>(i) * res, dist);
             const double u = (dist > 1e-9) ? s / dist : 0.0;
             x = x0 + u * dx;
             y = y0 + u * dy;
+
+            point.pose.position.x = x;
+            point.pose.position.y = y;
+            this->tbest.path.poses.push_back(point);
 
             const int c = get_cell_val(x, y);
             if (c < 0 || c >= this->thr_cost) {
@@ -204,6 +217,10 @@ bool DwaPsoPlanner::check_collision(trajectory t) {
             x = xc + R * std::cos(theta);
             y = yc + R * std::sin(theta);
 
+            point.pose.position.x = x;
+            point.pose.position.y = y;
+            this->tbest.path.poses.push_back(point);
+
             const int c = get_cell_val(x, y);
             if (c < 0 || c >= this->thr_cost) {
                 return true;
@@ -229,4 +246,10 @@ int DwaPsoPlanner::get_cell_val(double x, double y){
     }
 
     return this->costmap.data[j * w + i];
+}
+
+void DwaPsoPlanner::pub_path(){
+    this->tbest.path.header.frame_id = "odom";
+    this->tbest.path.header.stamp = this->now();
+    path_pub_->publish(this->tbest.path);
 }

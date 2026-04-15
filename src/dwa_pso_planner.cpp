@@ -47,10 +47,15 @@ DwaPsoPlanner::DwaPsoPlanner()
         opts
     );
 
-    pub_ = this->create_publisher<geometry_msgs::msg::Twist>(
+    cmd_pub_ = this->create_publisher<geometry_msgs::msg::Twist>(
         "/cmd_vel",
         rclcpp::QoS(10)
     );
+
+    path_pub_ = this->create_publisher<nav_msgs::msg::Path>(
+        "/path",
+        rclcpp::QoS(10)
+    ),
 
     planner_timer_ = this->create_wall_timer(
         std::chrono::milliseconds((int64_t)dt_ms),
@@ -81,6 +86,8 @@ void DwaPsoPlanner::plannerCB()
 
     const window wnd = this->compute_dynamic_window(odom);
 
+    
+
     geometry_msgs::msg::Twist cmd_vel;
 
     // Init zero cmd before computation
@@ -93,6 +100,12 @@ void DwaPsoPlanner::plannerCB()
     cmd_vel.angular.z = 0.0;
 
     cmd_vel = this->pso_optimize_cmd(wnd);
+
+    this->pub_path();
+
+    RCLCPP_INFO(this->get_logger(),"WINDOW: (%f, %f)", wnd.v_max, wnd.w_max);
+    RCLCPP_INFO(this->get_logger(), "LINEAR: (%f)   ANGULAR: (%f)", cmd_vel.linear.x, cmd_vel.angular.z);
+    RCLCPP_INFO(this->get_logger(),"COLLISION: (%i)", this->tbest.COLLISION);
 
     // Optional safety: keep command inside window bounds
     cmd_vel.linear.x  = std::clamp(cmd_vel.linear.x,  wnd.v_min, wnd.v_max);
@@ -124,7 +137,7 @@ void DwaPsoPlanner::plannerCB()
         cmd_vel.angular.z = 0.0;
     #endif
 
-    pub_->publish(cmd_vel);
+    cmd_pub_->publish(cmd_vel);
 
     auto delta_t = (this->now() - t0).seconds();
 

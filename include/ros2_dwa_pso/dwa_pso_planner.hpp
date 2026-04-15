@@ -6,6 +6,8 @@
 #include <nav_msgs/msg/occupancy_grid.hpp>
 #include <geometry_msgs/msg/twist.hpp>
 #include <geometry_msgs/msg/point.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
+#include <nav_msgs/msg/path.hpp>
 #include <mutex>
 #include <atomic>
 
@@ -34,6 +36,7 @@ class DwaPsoPlanner : public rclcpp::Node {
 
         struct trajectory {
             bool IS_LINEAR;
+            bool COLLISION;
             struct origin {
                 double x0;
                 double y0;
@@ -53,6 +56,7 @@ class DwaPsoPlanner : public rclcpp::Node {
                 double w;
             } vel;
             double radius;
+            nav_msgs::msg::Path path;
         };
     
     private:
@@ -78,12 +82,15 @@ class DwaPsoPlanner : public rclcpp::Node {
 
         void get_params();
 
+        void pub_path();
+
         rclcpp::CallbackGroup::SharedPtr sub_group_;
         rclcpp::CallbackGroup::SharedPtr planner_group_;
 
         rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
         rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr costmap_sub_;
-        rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_;
+        rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_pub_;
+        rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
         rclcpp::TimerBase::SharedPtr planner_timer_;
 
         std::mutex odom_mtx;
@@ -93,6 +100,8 @@ class DwaPsoPlanner : public rclcpp::Node {
         std::mutex costmap_mtx;
         nav_msgs::msg::OccupancyGrid last_costmap, costmap;
         std::atomic<bool> have_costmap{false};
+
+        trajectory tbest;
 
         /*
         -------------- ROS params --------------
@@ -120,7 +129,7 @@ class DwaPsoPlanner : public rclcpp::Node {
         double iner_start{0.9};
         double iner_end{0.4};
 
-        int thr_cost{80};
+        int thr_cost{60};
         /*
         -------------- ROS params --------------
         */
