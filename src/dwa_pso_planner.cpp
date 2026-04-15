@@ -148,22 +148,15 @@ void DwaPsoPlanner::plannerCB()
 }
 
 void DwaPsoPlanner::odomCB(const nav_msgs::msg::Odometry::SharedPtr msg) {
-    // RCLCPP_INFO(this->get_logger(), "ODOM CB");
     std::lock_guard<std::mutex> lk(odom_mtx);
     last_odom = *msg;
     have_odom.store(true, std::memory_order_release);
 }
 
 void DwaPsoPlanner::costmapCB(const nav_msgs::msg::OccupancyGrid::SharedPtr msg) {
-    // RCLCPP_INFO(this->get_logger(), "COSTMAP CB");
     std::lock_guard<std::mutex> lk(costmap_mtx);
     last_costmap = * msg;
     have_costmap.store(true, std::memory_order_release);
-
-    // #ifdef DEBUG
-    //     counter++;
-    //     RCLCPP_INFO(this->get_logger(), "costmapCB counter=%d", counter);
-    // #endif
 }
 
 DwaPsoPlanner::window DwaPsoPlanner::compute_dynamic_window(const nav_msgs::msg::Odometry& odom)
@@ -347,6 +340,9 @@ DwaPsoPlanner::trajectory DwaPsoPlanner::eval_trajectory(
 
     trajectory traj{};
 
+    traj.vel.v = v;
+    traj.vel.w = w;
+
     tf2::Quaternion q{
         odom.pose.pose.orientation.x,
         odom.pose.pose.orientation.y,
@@ -361,7 +357,8 @@ DwaPsoPlanner::trajectory DwaPsoPlanner::eval_trajectory(
     const double x0 = odom.pose.pose.position.x;
     const double y0 = odom.pose.pose.position.y;
     const double phi0 = yaw;
-    const double dt = this->dt_ms * 1e-3;
+    // const double dt = this->dt_ms * 1e-3;
+    const double dt = this->predict_time;
 
     double phi_hat = phi0 + w * dt;
     phi_hat = std::atan2(std::sin(phi_hat), std::cos(phi_hat));
@@ -380,7 +377,7 @@ DwaPsoPlanner::trajectory DwaPsoPlanner::eval_trajectory(
         y_hat = y0 - R * (c1 - c0);
 
         traj.IS_LINEAR = false;
-        traj.radius = R;
+        traj.radius = std::abs(R);
 
         const double Mx = -R * std::sin(phi0);
         const double My = +R * std::cos(phi0);
@@ -424,33 +421,16 @@ bool DwaPsoPlanner::check_collision(trajectory t) {
         const double dist = std::hypot(dx, dy);
 
         const size_t pnum = static_cast<size_t>(std::ceil(dist / res));
-        const double sgn_x = (dx >= 0.0) ? 1.0 : -1.0;
-        const double sgn_y = (dy >= 0.0) ? 1.0 : -1.0;
 
-        if (std::abs(dx) < 1e-6) {
-            for (size_t i = 0; i <= pnum; i++) {
-                x = x0;
-                y = y0 + sgn_y * i * res;
-                if (get_cell_val(x, y) > this->thr_cost) {
-                    return true;
-                }
-            }
-        } else if (std::abs(dy) < 1e-6) {
-            for (size_t i = 0; i <= pnum; i++) {
-                x = x0 + sgn_x * i * res;
-                y = y0;
-                if (get_cell_val(x, y) > this->thr_cost) {
-                    return true;
-                }
-            }
-        } else {
-            const double lamda = dy / dx;
-            for (size_t i = 0; i <= pnum; i++) {
-                x = x0 + sgn_x * i * res;
-                y = lamda * (x - x0) + y0;
-                if (get_cell_val(x, y) > this->thr_cost) {
-                    return true;
-                }
+        for (size_t i = 0; i <= pnum; i++) {
+            const double s = std::min(static_cast<double>(i) * res, dist);
+            const double u = (dist > 1e-9) ? s / dist : 0.0;
+            x = x0 + u * dx;
+            y = y0 + u * dy;
+
+            const int c = get_cell_val(x, y);
+            if (c < 0 || c >= this->thr_cost) {
+                return true;
             }
         }
     } else {
@@ -464,9 +444,8 @@ bool DwaPsoPlanner::check_collision(trajectory t) {
         // Signed angular displacement following the motion direction
         double dtheta = wrap_angle(theta_hat - theta0);
 
-        // For positive omega / positive radius: CCW
-        // For negative omega / negative radius: CW
-        if (R > 0.0) {
+
+        if (t.vel.w > 0.0) {
             if (dtheta < 0.0) {
                 dtheta += 2.0 * M_PI;
             }
@@ -480,12 +459,16 @@ bool DwaPsoPlanner::check_collision(trajectory t) {
         const size_t pnum = static_cast<size_t>(std::ceil(arc_len / res));
 
         if (pnum == 0) {
-            if (get_cell_val(x0, y0) > this->thr_cost) {
+            const int c0 = get_cell_val(x0, y0);
+            if (c0 < 0 || c0 >= this->thr_cost) {
                 return true;
             }
-            if (get_cell_val(x_hat, y_hat) > this->thr_cost) {
+
+            const int c1 = get_cell_val(x_hat, y_hat);
+            if (c1 < 0 || c1 >= this->thr_cost) {
                 return true;
             }
+
             return false;
         }
 
@@ -496,7 +479,8 @@ bool DwaPsoPlanner::check_collision(trajectory t) {
             x = xc + R * std::cos(theta);
             y = yc + R * std::sin(theta);
 
-            if (get_cell_val(x, y) > this->thr_cost) {
+            const int c = get_cell_val(x, y);
+            if (c < 0 || c >= this->thr_cost) {
                 return true;
             }
         }
