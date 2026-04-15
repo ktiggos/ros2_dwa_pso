@@ -328,7 +328,7 @@ double DwaPsoPlanner::eval_cost(const double v, const double w, const size_t k)
     
     // Return objective function cost value
     return -(this->alpha * head_score + this->gamma * v
-            - alpha_(k) * std::pow(beta_(q),2));
+            - 100 * std::pow(beta_(q),2));
 }
 
 DwaPsoPlanner::trajectory DwaPsoPlanner::eval_trajectory(
