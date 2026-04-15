@@ -27,6 +27,7 @@ endif()
 
 add_executable(dwa_pso_planner
   src/dwa_pso_planner.cpp
+  src/trajectory_evaluation.cpp
 )
 ament_target_dependencies(dwa_pso_planner
   rclcpp
