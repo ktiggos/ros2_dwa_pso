@@ -76,7 +76,7 @@ class DwaPsoPlanner : public rclcpp::Node {
             const double v, const double w
         );
 
-        bool check_collision(trajectory t);
+        bool check_collision(const trajectory& t);
 
         int get_cell_val(double x, double y);
 
@@ -101,7 +101,7 @@ class DwaPsoPlanner : public rclcpp::Node {
         nav_msgs::msg::OccupancyGrid last_costmap, costmap;
         std::atomic<bool> have_costmap{false};
 
-        trajectory tbest;
+        trajectory tcurr, tbest;
 
         /*
         -------------- ROS params --------------
@@ -110,7 +110,7 @@ class DwaPsoPlanner : public rclcpp::Node {
 
         // DWA                                    
         double dt_ms{100.0};
-        double predict_time{2.0};
+        double predict_time{10.0};
         double eps_goal{1e-2};
         DynamicLimits limits{{10.0, 5.0}, {2.0, 5.0}};
         double alpha{1.0};

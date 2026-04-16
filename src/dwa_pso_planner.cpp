@@ -228,11 +228,17 @@ geometry_msgs::msg::Twist DwaPsoPlanner::pso_optimize_cmd(const window& wnd)
     double gbest_w = swarm.front().pbest_w;
     double gbest_cost = swarm.front().pbest_cost;
 
+    this->eval_cost(gbest_v, gbest_w, 1);
+    this->tbest = this->tcurr;
+
     for (const auto &p : swarm) {
         if (p.pbest_cost < gbest_cost) {
             gbest_cost = p.pbest_cost;
             gbest_v = p.pbest_v;
             gbest_w = p.pbest_w;
+
+            this->eval_cost(gbest_v, gbest_w, 1);
+            this->tbest = this->tcurr;
         }
     }
 
@@ -284,6 +290,9 @@ geometry_msgs::msg::Twist DwaPsoPlanner::pso_optimize_cmd(const window& wnd)
                 gbest_cost = p.pbest_cost;
                 gbest_v = p.pbest_v;
                 gbest_w = p.pbest_w;
+
+                this->eval_cost(gbest_v, gbest_w, it + 1);
+                this->tbest = this->tcurr;
             }
         }
 

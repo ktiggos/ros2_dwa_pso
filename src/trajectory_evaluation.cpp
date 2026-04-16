@@ -35,7 +35,7 @@ double DwaPsoPlanner::eval_cost(const double v, const double w, const size_t k)
 
     bool TRAJ_COLLISION = check_collision(traj);
 
-    this->tbest.COLLISION = TRAJ_COLLISION;
+    this->tcurr.COLLISION = TRAJ_COLLISION;
 
     x_hat = traj.predicted_pose.x_hat;
     y_hat = traj.predicted_pose.y_hat;
@@ -64,10 +64,10 @@ DwaPsoPlanner::trajectory DwaPsoPlanner::eval_trajectory(
 ) {
     constexpr double EPS_W = 1e-4;
 
-    trajectory traj{};
+    trajectory t{};
 
-    traj.vel.v = v;
-    traj.vel.w = w;
+    t.vel.v = v;
+    t.vel.w = w;
 
     tf2::Quaternion q{
         odom.pose.pose.orientation.x,
@@ -87,12 +87,18 @@ DwaPsoPlanner::trajectory DwaPsoPlanner::eval_trajectory(
     const double dt = this->predict_time;
     const double res = this->costmap.info.resolution;
 
-    double phi_hat = phi0 + w * dt;
-    phi_hat = std::atan2(std::sin(phi_hat), std::cos(phi_hat));
+    double phi_hat = wrap_angle(phi0 + w * dt);
+
+    geometry_msgs::msg::PoseStamped point;
+
+    point.pose.position.x = x0;
+    point.pose.position.y = y0;
+
+    t.path.poses.push_back(point);
 
     double x_hat, y_hat;
-
     if (std::fabs(w) > EPS_W) {
+        t.IS_LINEAR = false;
         const double s0 = std::sin(phi0);
         const double c0 = std::cos(phi0);
         const double s1 = std::sin(phi0 + w * dt);
@@ -103,85 +109,16 @@ DwaPsoPlanner::trajectory DwaPsoPlanner::eval_trajectory(
         x_hat = x0 + R * (s1 - s0);
         y_hat = y0 - R * (c1 - c0);
 
-        traj.IS_LINEAR = false;
-        traj.radius = std::fabs(R);
-
         const double Mx = -R * std::sin(phi0);
         const double My = +R * std::cos(phi0);
-
-        traj.center.xc = x0 + Mx;
-        traj.center.yc = y0 + My;
-    } else {
-        x_hat = x0 + v * dt * std::cos(phi0);
-        y_hat = y0 + v * dt * std::sin(phi0);
-
-        traj.IS_LINEAR = true;
-        traj.radius = 0.0;
-        traj.center.xc = 0.0;
-        traj.center.yc = 0.0;
-    }
-
-    traj.origin.x0 = x0;
-    traj.origin.y0 = y0;
-    traj.origin.phi0 = phi0;
-
-    traj.predicted_pose.x_hat = x_hat;
-    traj.predicted_pose.y_hat = y_hat;
-    traj.predicted_pose.phi_hat = phi_hat;
-
-    this->tbest = traj;
-
-    return traj;
-}
-
-bool DwaPsoPlanner::check_collision(trajectory t) {
-    const double x0 = t.origin.x0;
-    const double y0 = t.origin.y0;
-    const double x_hat = t.predicted_pose.x_hat;
-    const double y_hat = t.predicted_pose.y_hat;
-    const double res = this->costmap.info.resolution;
-
-    double x = x0;
-    double y = y0;
-
-    geometry_msgs::msg::PoseStamped point;
-
-    point.pose.position.x = x;
-    point.pose.position.y = y;
-    this->tbest.path.poses.push_back(point);
-
-    if (t.IS_LINEAR) {
-        const double dx = x_hat - x0;
-        const double dy = y_hat - y0;
-        const double dist = std::hypot(dx, dy);
-
-        const size_t pnum = static_cast<size_t>(std::ceil(dist / res));
-        for (size_t i = 0; i <= pnum; i++) {
-            const double s = std::min(static_cast<double>(i) * res, dist);
-            const double u = (dist > 1e-9) ? s / dist : 0.0;
-            x = x0 + u * dx;
-            y = y0 + u * dy;
-
-            point.pose.position.x = x;
-            point.pose.position.y = y;
-            this->tbest.path.poses.push_back(point);
-
-            const int c = get_cell_val(x, y);
-            if (c < 0 || c >= this->thr_cost) {
-                return true;
-            }
-        }
-    } else {
-        const double R = t.radius;
-        const double xc = t.center.xc;
-        const double yc = t.center.yc;
+        const double xc = x0 + Mx;
+        const double yc = y0 + My;
 
         const double theta0 = std::atan2(y0 - yc, x0 - xc);
         const double theta_hat = std::atan2(y_hat - yc, x_hat - xc);
 
         // Signed angular displacement following the motion direction
         double dtheta = wrap_angle(theta_hat - theta0);
-
 
         if (t.vel.w > 0.0) {
             if (dtheta < 0.0) {
@@ -196,35 +133,74 @@ bool DwaPsoPlanner::check_collision(trajectory t) {
         const double arc_len = std::abs(R * dtheta);
         const size_t pnum = static_cast<size_t>(std::ceil(arc_len / res));
 
-        if (pnum == 0) {
-            const int c0 = get_cell_val(x0, y0);
-            if (c0 < 0 || c0 >= this->thr_cost) {
-                return true;
-            }
-
-            const int c1 = get_cell_val(x_hat, y_hat);
-            if (c1 < 0 || c1 >= this->thr_cost) {
-                return true;
-            }
-
-            return false;
-        }
-
         const double step_theta = dtheta / static_cast<double>(pnum);
 
+        double x = x0;
+        double y = y0;
         for (size_t i = 0; i <= pnum; i++) {
             const double theta = theta0 + static_cast<double>(i) * step_theta;
-            x = xc + R * std::cos(theta);
-            y = yc + R * std::sin(theta);
+            x = xc + std::fabs(R) * std::cos(theta);
+            y = yc + std::fabs(R) * std::sin(theta);
 
             point.pose.position.x = x;
             point.pose.position.y = y;
-            this->tbest.path.poses.push_back(point);
+            t.path.poses.push_back(point);
+        }
 
-            const int c = get_cell_val(x, y);
-            if (c < 0 || c >= this->thr_cost) {
-                return true;
-            }
+        t.center.xc = xc;
+        t.center.yc = yc;
+        t.radius = std::fabs(R);
+    } else {
+        t.IS_LINEAR = true;
+        t.radius = 0.0;
+        t.center.xc = 0.0;
+        t.center.yc = 0.0;
+
+        x_hat = x0 + v * dt * std::cos(phi0);
+        y_hat = y0 + v * dt * std::sin(phi0);
+
+        const double dx = x_hat - x0;
+        const double dy = y_hat - y0;
+        const double dist = std::hypot(dx, dy);
+
+        const size_t pnum = static_cast<size_t>(std::ceil(dist / res));
+
+        double x = x0;
+        double y = y0;
+        for (size_t i = 0; i <= pnum; i++) {
+            const double s = std::min(static_cast<double>(i) * res, dist);
+            const double u = (dist > 1e-9) ? s / dist : 0.0;
+            x = x0 + u * dx;
+            y = y0 + u * dy;
+
+            point.pose.position.x = x;
+            point.pose.position.y = y;
+            t.path.poses.push_back(point);
+        }
+    }
+
+    t.origin.x0 = x0;
+    t.origin.y0 = y0;
+    t.origin.phi0 = phi0;
+
+    t.predicted_pose.x_hat = x_hat;
+    t.predicted_pose.y_hat = y_hat;
+    t.predicted_pose.phi_hat = phi_hat;
+
+    this->tcurr = t;
+
+    return t;
+}
+
+bool DwaPsoPlanner::check_collision(const trajectory& t) {
+
+    for(const auto& p : t.path.poses){
+        const double x = p.pose.position.x;
+        const double y = p.pose.position.y;
+
+        int c = get_cell_val(x,y);
+        if(c < 0 || c > this->thr_cost){
+            return true;
         }
     }
 
