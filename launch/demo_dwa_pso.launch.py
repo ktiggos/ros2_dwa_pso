@@ -10,20 +10,22 @@ def generate_launch_description():
 
     args = [
         ################### SET GOAL HERE ###################
-        DeclareLaunchArgument("goal_x", default_value="2.0"),
-        DeclareLaunchArgument("goal_y", default_value="1.0"),
+        DeclareLaunchArgument("goal_x", default_value="10.0"),
+        DeclareLaunchArgument("goal_y", default_value="0.0"),
         #####################################################
 
         DeclareLaunchArgument("controller_step_ms", default_value="100.0"),
         DeclareLaunchArgument("eps_goal",           default_value="1e-2"),
 
         DeclareLaunchArgument("linear_vel_max",     default_value="10.0"),
-        DeclareLaunchArgument("angular_vel_max",    default_value="5.0"),
-        DeclareLaunchArgument("linear_acc_max",     default_value="2.0"),
-        DeclareLaunchArgument("angular_acc_max",    default_value="5.0"),
+        DeclareLaunchArgument("angular_vel_max",    default_value="10.0"),
+        DeclareLaunchArgument("linear_acc_max",     default_value="0.5"),
+        DeclareLaunchArgument("angular_acc_max",    default_value="2.0"),
 
-        DeclareLaunchArgument("alpha",              default_value="1.0"),
-        DeclareLaunchArgument("gamma",              default_value="0.2"),
+        DeclareLaunchArgument("heading_weight",     default_value="1.0"),
+        DeclareLaunchArgument("velocity_weight",    default_value="1.0"),
+        DeclareLaunchArgument("progress_weight",    default_value="1.0"),
+        DeclareLaunchArgument("clearence_weigt",    default_value="1.0"),
 
         DeclareLaunchArgument("pso_max_iter",       default_value="30"),
         DeclareLaunchArgument("particles",          default_value="30"),
@@ -55,8 +57,10 @@ def generate_launch_description():
             "limits.max_acc.linear":  LaunchConfiguration("linear_acc_max"),
             "limits.max_acc.angular": LaunchConfiguration("angular_acc_max"),
 
-            "alpha": LaunchConfiguration("alpha"),
-            "gamma": LaunchConfiguration("gamma"),
+            "heading_weight": LaunchConfiguration("heading_weight"),
+            "velocity_weight": LaunchConfiguration("velocity_weight"),
+            "progress_weight": LaunchConfiguration("progress_weight"),
+            "clearence_weight": LaunchConfiguration("clearence_weight"),
 
             "imax":  LaunchConfiguration("pso_max_iter"),
             "n_par": LaunchConfiguration("particles"),

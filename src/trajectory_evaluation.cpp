@@ -26,35 +26,50 @@ static double beta_(const uint q){
     }
 }
 
+static int signed_dir(const double val){
+    if(val > 1e-4){
+        return +1;
+    }else if(val < -1e-4){
+        return -1;
+    }
+    return 0;
+}
+
 double DwaPsoPlanner::eval_cost(const double v, const double w, const size_t k)
 {
-    double x_hat{0.0}, y_hat{0.0}, phi_hat{0.0};
-
     // Predict pose
-    trajectory traj = eval_trajectory(odom, v, w);
+    trajectory t = eval_trajectory(odom, v, w);
 
-    bool TRAJ_COLLISION = check_collision(traj);
-
-    this->tcurr.COLLISION = TRAJ_COLLISION;
-
-    x_hat = traj.predicted_pose.x_hat;
-    y_hat = traj.predicted_pose.y_hat;
-    phi_hat = traj.predicted_pose.phi_hat;
-
-    const double dx = this->goal.x - x_hat;
-    const double dy = this->goal.y - y_hat;
-
-    const double goal_bearing = std::atan2(dy, dx);
-    const double head_score = std::cos(phi_hat - goal_bearing);
+    bool TRAJ_COLLISION = check_collision(t);
+    this->tcurr.info.COLLISION = TRAJ_COLLISION;
 
     const uint q = (TRAJ_COLLISION) ? 1 : 0;
-
-    const double reward = this->alpha * head_score + this->gamma * v;
     const double penalty = 100 * std::pow(beta_(q),2);
-    // const double penalty = 0.0;
+
+    std::vector<double> costs;
+    costs.push_back(velocity_cost(t.vel.v));
+    costs.push_back(heading_cost(t));
+    costs.push_back(clearence_cost(t));
+    costs.push_back(progress_cost(
+        t.predicted_pose.x_hat,
+        t.predicted_pose.y_hat)
+    );
+    costs.push_back(oscillation_cost(t.vel.w));
+
+    this->tcurr.info.scores.vel = costs[0];
+    this->tcurr.info.scores.head = costs[1];
+    this->tcurr.info.scores.clearence = costs[2];
+    this->tcurr.info.scores.progress = costs[3];
+    this->tcurr.info.scores.oscillation = costs[4];
+    this->tcurr.info.scores.collision = penalty;
+
+    double total_cost = 0.0;
+    for(double& c : costs){
+        total_cost += c;
+    }
     
     // Return objective function cost value
-    return ( penalty - reward );
+    return (penalty + total_cost);
 }
 
 DwaPsoPlanner::trajectory DwaPsoPlanner::eval_trajectory(
@@ -98,7 +113,7 @@ DwaPsoPlanner::trajectory DwaPsoPlanner::eval_trajectory(
 
     double x_hat, y_hat;
     if (std::fabs(w) > EPS_W) {
-        t.IS_LINEAR = false;
+        t.info.IS_LINEAR = false;
         const double s0 = std::sin(phi0);
         const double c0 = std::cos(phi0);
         const double s1 = std::sin(phi0 + w * dt);
@@ -151,7 +166,7 @@ DwaPsoPlanner::trajectory DwaPsoPlanner::eval_trajectory(
         t.center.yc = yc;
         t.radius = std::fabs(R);
     } else {
-        t.IS_LINEAR = true;
+        t.info.IS_LINEAR = true;
         t.radius = 0.0;
         t.center.xc = 0.0;
         t.center.yc = 0.0;
@@ -198,13 +213,142 @@ bool DwaPsoPlanner::check_collision(const trajectory& t) {
         const double x = p.pose.position.x;
         const double y = p.pose.position.y;
 
-        int c = get_cell_val(x,y);
+        const int c = get_cell_val(x,y);
         if(c < 0 || c > this->thr_cost){
             return true;
         }
     }
 
     return false;
+}
+
+double DwaPsoPlanner::velocity_cost(const double v){
+    const double v_max = this->limits.max_vel.linear;
+    return this->w_vel * (v_max - v)/v_max;
+}
+
+double DwaPsoPlanner::heading_cost(const trajectory& t){
+    const double x_hat = t.predicted_pose.x_hat;
+    const double y_hat = t.predicted_pose.y_hat;
+    const double phi_hat = t.predicted_pose.phi_hat;
+
+    const double dx = this->goal.x - x_hat;
+    const double dy = this->goal.y - y_hat;
+
+    const double phi_g = std::atan2(dy, dx);
+    
+    const double dphi = wrap_angle(phi_g - phi_hat);
+
+    return this->w_head * std::pow(std::sin(dphi / 2),2);
+}
+
+double DwaPsoPlanner::clearence_cost(const trajectory& t){
+    constexpr double MAX_OCC_COST = 100.0;
+
+    // Min cost --> 0
+    int max_cost = -1;
+    for(const auto& p : t.path.poses){
+        const double x = p.pose.position.x;
+        const double y = p.pose.position.y;
+
+        const int c = get_cell_val(x,y);
+
+        max_cost = c > max_cost ? c : max_cost;
+    }
+
+    return this->w_clear * (static_cast<double>(max_cost) / MAX_OCC_COST);
+}
+
+double DwaPsoPlanner::progress_cost(const double x_hat, const double y_hat){
+    const double x0 = this->odom.pose.pose.position.x;
+    const double y0 = this->odom.pose.pose.position.y;
+    const double xg = this->goal.x;
+    const double yg = this->goal.y;
+
+    const double dg = std::hypot(xg - x0, yg - y0);
+    if (dg < 1e-9) {
+        return 0.0;
+    }
+
+    const double gx = (xg - x0) / dg;
+    const double gy = (yg - y0) / dg;
+
+    const double dx = x_hat - x0;
+    const double dy = y_hat - y0;
+    const double ds = dx * gx + dy * gy;
+
+    if(ds < 0.0){
+        return 500.0;
+    }
+
+    return this->w_prog * (1 - ds / dg);
+}
+
+double DwaPsoPlanner::oscillation_cost(const double w){
+    constexpr double OSC_PENALTY = 500.0;
+
+    if(!this->osc_initialized){
+        this->reset_osc_state();
+    }
+
+    if(this->check_osc_reset()){
+        this->reset_osc_state();
+    }
+
+    const int w_sign = signed_dir(w);
+
+    if(w_sign !=0 && last_w_sign !=0 && w_sign != last_w_sign){
+        return OSC_PENALTY;
+    }
+
+    return 0.0;
+}
+
+bool DwaPsoPlanner::check_osc_reset() const {
+    const double x = this->odom.pose.pose.position.x;
+    const double y = this->odom.pose.pose.position.y;
+
+    tf2::Quaternion q{
+        this->odom.pose.pose.orientation.x,
+        this->odom.pose.pose.orientation.y,
+        this->odom.pose.pose.orientation.z,
+        this->odom.pose.pose.orientation.w
+    };
+
+    tf2::Matrix3x3 m(q);
+
+    double roll, pitch, phi;
+    m.getRPY(roll, pitch, phi);
+
+    const double ds = std::hypot(x - this->x_reset, y - this->y_reset);
+    const double dphi = std::fabs(wrap_angle(phi - this->phi_reset));
+
+    return (ds > this->osc_reset_dist) || (dphi > this->osc_reset_angle);
+}
+
+void DwaPsoPlanner::reset_osc_state(){
+    const double x = this->odom.pose.pose.position.x;
+    const double y = this->odom.pose.pose.position.y;
+
+    tf2::Quaternion q(
+        this->odom.pose.pose.orientation.x,
+        this->odom.pose.pose.orientation.y,
+        this->odom.pose.pose.orientation.z,
+        this->odom.pose.pose.orientation.w
+    );
+    tf2::Matrix3x3 m(q);
+
+    double roll, pitch, phi;
+    m.getRPY(roll, pitch, phi);
+
+    this->x_reset = x;
+    this->y_reset = y;
+    this->phi_reset = phi;
+
+    this->last_v_sign = 0;
+    this->last_w_sign = 0;
+
+    this->osc_initialized = true;
 }
 
 int DwaPsoPlanner::get_cell_val(double x, double y){
@@ -222,6 +366,19 @@ int DwaPsoPlanner::get_cell_val(double x, double y){
     }
 
     return this->costmap.data[j * w + i];
+}
+
+void DwaPsoPlanner::update_osc_memory(const double v, const double w){
+    const int v_sign = signed_dir(v);
+    const int w_sign = signed_dir(w);
+
+    if(v_sign != 0){
+        last_v_sign = v_sign;
+    }
+
+    if(w_sign != 0){
+        last_w_sign = w_sign;
+    }
 }
 
 void DwaPsoPlanner::pub_path(){

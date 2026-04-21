@@ -35,8 +35,18 @@ class DwaPsoPlanner : public rclcpp::Node {
         };
 
         struct trajectory {
-            bool IS_LINEAR;
-            bool COLLISION;
+            struct info {
+                bool IS_LINEAR;
+                bool COLLISION;
+                struct scores {
+                    double head;
+                    double vel;
+                    double clearence;
+                    double oscillation;
+                    double collision;
+                    double progress;
+                } scores;
+            } info;
             struct origin {
                 double x0;
                 double y0;
@@ -54,6 +64,8 @@ class DwaPsoPlanner : public rclcpp::Node {
             struct vel {
                 double v;
                 double w;
+                double v0;
+                double w0;
             } vel;
             double radius;
             nav_msgs::msg::Path path;
@@ -76,6 +88,12 @@ class DwaPsoPlanner : public rclcpp::Node {
             const double v, const double w
         );
 
+        double velocity_cost(const double v);
+        double heading_cost(const trajectory& t);
+        double clearence_cost(const trajectory& t);
+        double progress_cost(const double x_hat, const double y_hat);
+        double oscillation_cost(const double w);
+
         bool check_collision(const trajectory& t);
 
         int get_cell_val(double x, double y);
@@ -83,6 +101,12 @@ class DwaPsoPlanner : public rclcpp::Node {
         void get_params();
 
         void pub_path();
+
+        bool check_osc_reset() const;
+
+        void reset_osc_state();
+
+        void update_osc_memory(const double v, const double w);
 
         rclcpp::CallbackGroup::SharedPtr sub_group_;
         rclcpp::CallbackGroup::SharedPtr planner_group_;
@@ -103,6 +127,18 @@ class DwaPsoPlanner : public rclcpp::Node {
 
         trajectory tcurr, tbest;
 
+        // Oscillation memory
+        int last_v_sign{0};   // -1, 0, +1
+        int last_w_sign{0};   // -1, 0, +1
+
+        // Pose at last oscillation reset
+        double x_reset{0.0};
+        double y_reset{0.0};
+        double phi_reset{0.0};
+
+        // Init flag
+        bool osc_initialized{false};
+
         /*
         -------------- ROS params --------------
         */
@@ -110,11 +146,13 @@ class DwaPsoPlanner : public rclcpp::Node {
 
         // DWA                                    
         double dt_ms{100.0};
-        double predict_time{10.0};
+        double predict_time{1.0};
         double eps_goal{1e-2};
         DynamicLimits limits{{10.0, 5.0}, {2.0, 5.0}};
-        double alpha{1.0};
-        double gamma{0.2}; 
+        double w_head{1.0};
+        double w_vel{1.0};
+        double w_prog{1.0};
+        double w_clear{1.0};
 
         // PSO
         size_t imax{30}; // max iterations
@@ -129,7 +167,9 @@ class DwaPsoPlanner : public rclcpp::Node {
         double iner_start{0.9};
         double iner_end{0.4};
 
-        int thr_cost{60};
+        // TBD PARAMS
+        int thr_cost{80};
+        double osc_reset_dist{0.17}, osc_reset_angle{0.15};
         /*
         -------------- ROS params --------------
         */

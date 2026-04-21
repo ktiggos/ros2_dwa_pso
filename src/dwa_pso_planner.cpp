@@ -10,7 +10,7 @@
 #include <limits>
 #include <cmath>
 
-#define DEBUG
+// #define DEBUG
 
 DwaPsoPlanner::DwaPsoPlanner()
 : Node("dwa_pso_planner") {
@@ -86,30 +86,45 @@ void DwaPsoPlanner::plannerCB()
 
     const window wnd = this->compute_dynamic_window(odom);
 
-    
-
     geometry_msgs::msg::Twist cmd_vel;
 
-    // Init zero cmd before computation
-    cmd_vel.linear.x = 0.0;
-    cmd_vel.linear.y = 0.0;
-    cmd_vel.linear.z = 0.0;
+    // // Init zero cmd before computation
+    // cmd_vel.linear.x = 0.0;
+    // cmd_vel.linear.y = 0.0;
+    // cmd_vel.linear.z = 0.0;
 
-    cmd_vel.angular.x = 0.0;
-    cmd_vel.angular.y = 0.0;
-    cmd_vel.angular.z = 0.0;
+    // cmd_vel.angular.x = 0.0;
+    // cmd_vel.angular.y = 0.0;
+    // cmd_vel.angular.z = 0.0;
 
     cmd_vel = this->pso_optimize_cmd(wnd);
 
     this->pub_path();
 
-    RCLCPP_INFO(this->get_logger(),"WINDOW: (%f, %f)", wnd.v_max, wnd.w_max);
-    RCLCPP_INFO(this->get_logger(), "LINEAR: (%f)   ANGULAR: (%f)", cmd_vel.linear.x, cmd_vel.angular.z);
-    RCLCPP_INFO(this->get_logger(),"COLLISION: (%i)", this->tbest.COLLISION);
+    // RCLCPP_INFO(this->get_logger(),"%s", "----------------------------------");
+    // RCLCPP_INFO(this->get_logger(),"WINDOW: (%f, %f)", wnd.v_max, wnd.w_max);
+    // RCLCPP_INFO(this->get_logger(), "LINEAR: (%f)   ANGULAR: (%f)", cmd_vel.linear.x, cmd_vel.angular.z);
+
+    RCLCPP_INFO(this->get_logger(),"%s", "----------------------------------");
+    RCLCPP_INFO(this->get_logger(),"HEAD: (%f)", this->tbest.info.scores.head);
+    RCLCPP_INFO(this->get_logger(),"VEL: (%f)", this->tbest.info.scores.vel);
+    RCLCPP_INFO(this->get_logger(),"PROG: (%f)", this->tbest.info.scores.progress);
+    RCLCPP_INFO(this->get_logger(),"CLEAR: (%f)", this->tbest.info.scores.clearence);
+    RCLCPP_INFO(this->get_logger(),"OSC: (%f)", this->tbest.info.scores.oscillation);
+    RCLCPP_INFO(this->get_logger(),"COLL: (%f)", this->tbest.info.scores.collision);
+
 
     // Optional safety: keep command inside window bounds
     cmd_vel.linear.x  = std::clamp(cmd_vel.linear.x,  wnd.v_min, wnd.v_max);
     cmd_vel.angular.z = std::clamp(cmd_vel.angular.z, wnd.w_min, wnd.w_max);
+
+    // RCLCPP_INFO(this->get_logger(),
+    // "v_curr=%f  dv=%f  vmin=%f  vmax=%f v_cmd=%f",
+    // odom.twist.twist.linear.x,
+    // this->limits.max_acc.linear * (this->dt_ms * 1e-3),
+    // wnd.v_min,
+    // wnd.v_max,
+    // cmd_vel.linear.x);
 
     // Terminate cmd when goal reached
     double dx = goal.x - odom.pose.pose.position.x;
@@ -125,6 +140,8 @@ void DwaPsoPlanner::plannerCB()
         cmd_vel.angular.y = 0.0;
         cmd_vel.angular.z = 0.0;
     }
+
+    this->update_osc_memory(cmd_vel.linear.x, cmd_vel.angular.z);
 
     // No movement during debug
     #ifdef DEBUG
@@ -173,6 +190,9 @@ DwaPsoPlanner::window DwaPsoPlanner::compute_dynamic_window(const nav_msgs::msg:
     wnd.w_min = std::clamp(w_curr - dw, -this->limits.max_vel.angular, this->limits.max_vel.angular);
     wnd.w_max = std::clamp(w_curr + dw, -this->limits.max_vel.angular, this->limits.max_vel.angular);
 
+    // Normalize to forward motion only
+    wnd.v_min = wnd.v_min < 0.0 ? 0.0 : wnd.v_min;
+    
     return wnd;
 }
 
@@ -327,8 +347,10 @@ void DwaPsoPlanner::get_params() {
     this->declare_parameter<double>("limits.max_acc.linear",  this->limits.max_acc.linear);
     this->declare_parameter<double>("limits.max_acc.angular", this->limits.max_acc.angular);
 
-    this->declare_parameter<double>("alpha", this->alpha);
-    this->declare_parameter<double>("gamma", this->gamma);
+    this->declare_parameter<double>("heading_weight", this->w_head);
+    this->declare_parameter<double>("velocity_weight", this->w_vel);
+    this->declare_parameter<double>("progress_weight", this->w_prog);
+    this->declare_parameter<double>("clearence_weight", this->w_vel);
 
     this->declare_parameter<int>("imax", static_cast<int>(this->imax));
     this->declare_parameter<int>("n_par", this->n_par);
@@ -354,8 +376,10 @@ void DwaPsoPlanner::get_params() {
     this->get_parameter("limits.max_acc.linear",  this->limits.max_acc.linear);
     this->get_parameter("limits.max_acc.angular", this->limits.max_acc.angular);
 
-    this->get_parameter("alpha", this->alpha);
-    this->get_parameter("gamma", this->gamma);
+    this->get_parameter("heading_weight", this->w_head);
+    this->get_parameter("velocity_weight", this->w_vel);
+    this->get_parameter("progress_weight", this->w_prog);
+    this->get_parameter("clearence_weight", this->w_clear);
 
     int imax_tmp;
     this->get_parameter("imax", imax_tmp);
