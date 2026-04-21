@@ -126,6 +126,7 @@ class DwaPsoPlanner : public rclcpp::Node {
         std::atomic<bool> have_costmap{false};
 
         trajectory tcurr, tbest;
+        window wnd_curr;
 
         // Oscillation memory
         int last_v_sign{0};   // -1, 0, +1

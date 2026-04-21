@@ -84,7 +84,7 @@ void DwaPsoPlanner::plannerCB()
         return;
     }
 
-    const window wnd = this->compute_dynamic_window(odom);
+    this->wnd_curr = this->compute_dynamic_window(odom);
 
     geometry_msgs::msg::Twist cmd_vel;
 
@@ -97,26 +97,26 @@ void DwaPsoPlanner::plannerCB()
     // cmd_vel.angular.y = 0.0;
     // cmd_vel.angular.z = 0.0;
 
-    cmd_vel = this->pso_optimize_cmd(wnd);
+    cmd_vel = this->pso_optimize_cmd(this->wnd_curr);
 
     this->pub_path();
 
-    // RCLCPP_INFO(this->get_logger(),"%s", "----------------------------------");
-    // RCLCPP_INFO(this->get_logger(),"WINDOW: (%f, %f)", wnd.v_max, wnd.w_max);
-    // RCLCPP_INFO(this->get_logger(), "LINEAR: (%f)   ANGULAR: (%f)", cmd_vel.linear.x, cmd_vel.angular.z);
-
     RCLCPP_INFO(this->get_logger(),"%s", "----------------------------------");
-    RCLCPP_INFO(this->get_logger(),"HEAD: (%f)", this->tbest.info.scores.head);
-    RCLCPP_INFO(this->get_logger(),"VEL: (%f)", this->tbest.info.scores.vel);
-    RCLCPP_INFO(this->get_logger(),"PROG: (%f)", this->tbest.info.scores.progress);
-    RCLCPP_INFO(this->get_logger(),"CLEAR: (%f)", this->tbest.info.scores.clearence);
-    RCLCPP_INFO(this->get_logger(),"OSC: (%f)", this->tbest.info.scores.oscillation);
-    RCLCPP_INFO(this->get_logger(),"COLL: (%f)", this->tbest.info.scores.collision);
+    RCLCPP_INFO(this->get_logger(),"WINDOW: (%f, %f)", wnd_curr.v_max, wnd_curr.w_max);
+    RCLCPP_INFO(this->get_logger(), "LINEAR: (%f)   ANGULAR: (%f)", cmd_vel.linear.x, cmd_vel.angular.z);
+
+    // RCLCPP_INFO(this->get_logger(),"%s", "----------------------------------");
+    // RCLCPP_INFO(this->get_logger(),"HEAD: (%f)", this->tbest.info.scores.head);
+    // RCLCPP_INFO(this->get_logger(),"VEL: (%f)", this->tbest.info.scores.vel);
+    // RCLCPP_INFO(this->get_logger(),"PROG: (%f)", this->tbest.info.scores.progress);
+    // RCLCPP_INFO(this->get_logger(),"CLEAR: (%f)", this->tbest.info.scores.clearence);
+    // RCLCPP_INFO(this->get_logger(),"OSC: (%f)", this->tbest.info.scores.oscillation);
+    // RCLCPP_INFO(this->get_logger(),"COLL: (%f)", this->tbest.info.scores.collision);
 
 
     // Optional safety: keep command inside window bounds
-    cmd_vel.linear.x  = std::clamp(cmd_vel.linear.x,  wnd.v_min, wnd.v_max);
-    cmd_vel.angular.z = std::clamp(cmd_vel.angular.z, wnd.w_min, wnd.w_max);
+    cmd_vel.linear.x  = std::clamp(cmd_vel.linear.x,  wnd_curr.v_min, wnd_curr.v_max);
+    cmd_vel.angular.z = std::clamp(cmd_vel.angular.z, wnd_curr.w_min, wnd_curr.w_max);
 
     // RCLCPP_INFO(this->get_logger(),
     // "v_curr=%f  dv=%f  vmin=%f  vmax=%f v_cmd=%f",
