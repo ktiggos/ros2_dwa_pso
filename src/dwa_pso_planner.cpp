@@ -181,9 +181,11 @@ DwaPsoPlanner::window DwaPsoPlanner::compute_dynamic_window(const nav_msgs::msg:
 
     const double v_curr = odom.twist.twist.linear.x;
     const double w_curr = odom.twist.twist.angular.z;
+    const double al_max = this->limits.max_acc.linear;
+    const double aa_max = this->limits.max_acc.angular;
 
-    const double dv = this->limits.max_acc.linear  * dt;
-    const double dw = this->limits.max_acc.angular * dt;
+    const double dv = al_max * dt;
+    const double dw = aa_max * dt;
 
     window wnd;
     wnd.v_min = std::clamp(v_curr - dv, -this->limits.max_vel.linear,  this->limits.max_vel.linear);
@@ -193,7 +195,15 @@ DwaPsoPlanner::window DwaPsoPlanner::compute_dynamic_window(const nav_msgs::msg:
     wnd.w_max = std::clamp(w_curr + dw, -this->limits.max_vel.angular, this->limits.max_vel.angular);
 
     // Normalize to forward motion only
-    wnd.v_min = wnd.v_min < 0.0 ? 0.0 : wnd.v_min;
+    wnd.v_min = std::max(wnd.v_min, 0.0);
+
+    // Normalize to braking constaint
+    const double x0 = odom.pose.pose.position.x;
+    const double y0 = odom.pose.pose.position.y;
+    const double dg = std::hypot(x0 - this->goal.x, y0 - this->goal.y);
+
+    wnd.v_max = std::min(wnd.v_max, std::sqrt(2 * al_max * dg));
+    wnd.v_max = std::max(wnd.v_max, wnd.v_min);
     
     return wnd;
 }
