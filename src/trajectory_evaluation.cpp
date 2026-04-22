@@ -38,7 +38,7 @@ static int signed_dir(const double val){
 double DwaPsoPlanner::eval_cost(const double v, const double w, const size_t k)
 {
     // Predict pose
-    trajectory t = eval_trajectory(odom, v, w);
+    trajectory t = eval_trajectory(this->odom, v, w);
 
     bool TRAJ_COLLISION = check_collision(t);
     this->tcurr.info.COLLISION = TRAJ_COLLISION;
@@ -223,8 +223,14 @@ bool DwaPsoPlanner::check_collision(const trajectory& t) {
 }
 
 double DwaPsoPlanner::velocity_cost(const double v){
-    const double v_max = this->limits.max_vel.linear;
-    return this->w_vel * (v_max - v)/v_max;
+    const double v_max = this->wnd_curr.v_max;
+    const double v_min = this->wnd_curr.v_min;
+
+    if(std::fabs(v_max - v_min) < 1e-9) {
+        return 0.0;
+    }
+
+    return this->w_vel * (v_max - v) / (v_max - v_min);
 }
 
 double DwaPsoPlanner::heading_cost(const trajectory& t){
