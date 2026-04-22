@@ -259,29 +259,47 @@ double DwaPsoPlanner::clearence_cost(const trajectory& t){
     return this->w_clear * (static_cast<double>(max_cost) / MAX_OCC_COST);
 }
 
+// Projected progression
+// double DwaPsoPlanner::progress_cost(const double x_hat, const double y_hat){
+//     const double x0 = this->odom.pose.pose.position.x;
+//     const double y0 = this->odom.pose.pose.position.y;
+//     const double xg = this->goal.x;
+//     const double yg = this->goal.y;
+
+//     const double dg = std::hypot(xg - x0, yg - y0);
+//     if (dg < 1e-9) {
+//         return 0.0;
+//     }
+
+//     const double gx = (xg - x0) / dg;
+//     const double gy = (yg - y0) / dg;
+
+//     const double dx = x_hat - x0;
+//     const double dy = y_hat - y0;
+//     const double ds = dx * gx + dy * gy;
+
+//     if(ds < 0.0){
+//         return 500.0;
+//     }
+
+//     return this->w_prog * (1 - ds / dg);
+// }
+
+// Terminal eucledian distance
 double DwaPsoPlanner::progress_cost(const double x_hat, const double y_hat){
     const double x0 = this->odom.pose.pose.position.x;
     const double y0 = this->odom.pose.pose.position.y;
     const double xg = this->goal.x;
     const double yg = this->goal.y;
 
-    const double dg = std::hypot(xg - x0, yg - y0);
-    if (dg < 1e-9) {
+    const double d0 = std::hypot(xg - x0, yg - y0);
+    if (d0 < 1e-9) {
         return 0.0;
     }
 
-    const double gx = (xg - x0) / dg;
-    const double gy = (yg - y0) / dg;
+    const double d_hat = std::hypot(xg - x_hat, yg - y_hat);
 
-    const double dx = x_hat - x0;
-    const double dy = y_hat - y0;
-    const double ds = dx * gx + dy * gy;
-
-    if(ds < 0.0){
-        return 500.0;
-    }
-
-    return this->w_prog * (1 - ds / dg);
+    return this->w_prog * std::min(d_hat / d0, 1.0);
 }
 
 double DwaPsoPlanner::oscillation_cost(const double w){
