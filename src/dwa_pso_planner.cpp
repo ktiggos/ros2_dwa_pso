@@ -101,17 +101,19 @@ void DwaPsoPlanner::plannerCB()
 
     this->pub_path();
 
+    RCLCPP_INFO(this->get_logger(),"%s", "##################################");
     RCLCPP_INFO(this->get_logger(),"%s", "----------------------------------");
+    RCLCPP_INFO(this->get_logger(),"ODOM: (%f)", odom.twist.twist.linear.x);
     RCLCPP_INFO(this->get_logger(),"WINDOW: (%f, %f)", wnd_curr.v_max, wnd_curr.w_max);
     RCLCPP_INFO(this->get_logger(), "LINEAR: (%f)   ANGULAR: (%f)", cmd_vel.linear.x, cmd_vel.angular.z);
 
-    // RCLCPP_INFO(this->get_logger(),"%s", "----------------------------------");
-    // RCLCPP_INFO(this->get_logger(),"HEAD: (%f)", this->tbest.info.scores.head);
-    // RCLCPP_INFO(this->get_logger(),"VEL: (%f)", this->tbest.info.scores.vel);
-    // RCLCPP_INFO(this->get_logger(),"PROG: (%f)", this->tbest.info.scores.progress);
-    // RCLCPP_INFO(this->get_logger(),"CLEAR: (%f)", this->tbest.info.scores.clearence);
-    // RCLCPP_INFO(this->get_logger(),"OSC: (%f)", this->tbest.info.scores.oscillation);
-    // RCLCPP_INFO(this->get_logger(),"COLL: (%f)", this->tbest.info.scores.collision);
+    RCLCPP_INFO(this->get_logger(),"%s", "----------------------------------");
+    RCLCPP_INFO(this->get_logger(),"HEAD: (%f)", this->tbest.info.scores.head);
+    RCLCPP_INFO(this->get_logger(),"VEL: (%f)", this->tbest.info.scores.vel);
+    RCLCPP_INFO(this->get_logger(),"PROG: (%f)", this->tbest.info.scores.progress);
+    RCLCPP_INFO(this->get_logger(),"CLEAR: (%f)", this->tbest.info.scores.clearence);
+    RCLCPP_INFO(this->get_logger(),"OSC: (%f)", this->tbest.info.scores.oscillation);
+    RCLCPP_INFO(this->get_logger(),"COLL: (%f)", this->tbest.info.scores.collision);
 
 
     // Optional safety: keep command inside window bounds
