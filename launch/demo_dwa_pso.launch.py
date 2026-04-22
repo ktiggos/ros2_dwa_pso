@@ -10,7 +10,7 @@ def generate_launch_description():
 
     args = [
         ################### SET GOAL HERE ###################
-        DeclareLaunchArgument("goal_x", default_value="10.0"),
+        DeclareLaunchArgument("goal_x", default_value="5.0"),
         DeclareLaunchArgument("goal_y", default_value="0.0"),
         #####################################################
 
@@ -19,8 +19,8 @@ def generate_launch_description():
 
         DeclareLaunchArgument("linear_vel_max",     default_value="10.0"),
         DeclareLaunchArgument("angular_vel_max",    default_value="10.0"),
-        DeclareLaunchArgument("linear_acc_max",     default_value="0.5"),
-        DeclareLaunchArgument("angular_acc_max",    default_value="2.0"),
+        DeclareLaunchArgument("linear_acc_max",     default_value="2.0"),
+        DeclareLaunchArgument("angular_acc_max",    default_value="1.0"),
 
         DeclareLaunchArgument("heading_weight",     default_value="1.0"),
         DeclareLaunchArgument("velocity_weight",    default_value="2.0"),
@@ -63,6 +63,8 @@ def generate_launch_description():
             "velocity_weight": LaunchConfiguration("velocity_weight"),
             "progress_weight": LaunchConfiguration("progress_weight"),
             "clearence_weight": LaunchConfiguration("clearence_weight"),
+
+            "reject_oob_trajectories": LaunchConfiguration("reject_oob_trajectories"),
 
             "imax":  LaunchConfiguration("pso_max_iter"),
             "n_par": LaunchConfiguration("particles"),
