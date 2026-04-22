@@ -214,7 +214,10 @@ bool DwaPsoPlanner::check_collision(const trajectory& t) {
         const double y = p.pose.position.y;
 
         const int c = get_cell_val(x,y);
-        if(c > this->thr_cost){
+
+        bool OOB_TRAJ = this->REJECT_OOB && c < 0.0;
+        
+        if(c > this->thr_cost || OOB_TRAJ){
             return true;
         }
     }

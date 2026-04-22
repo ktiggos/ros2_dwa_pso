@@ -23,9 +23,11 @@ def generate_launch_description():
         DeclareLaunchArgument("angular_acc_max",    default_value="2.0"),
 
         DeclareLaunchArgument("heading_weight",     default_value="1.0"),
-        DeclareLaunchArgument("velocity_weight",    default_value="1.0"),
-        DeclareLaunchArgument("progress_weight",    default_value="1.0"),
-        DeclareLaunchArgument("clearence_weight",    default_value="1.0"),
+        DeclareLaunchArgument("velocity_weight",    default_value="2.0"),
+        DeclareLaunchArgument("progress_weight",    default_value="2.0"),
+        DeclareLaunchArgument("clearence_weight",    default_value="2.0"),
+
+        DeclareLaunchArgument("reject_oob_trajectories", default_value="False"),
 
         DeclareLaunchArgument("pso_max_iter",       default_value="30"),
         DeclareLaunchArgument("particles",          default_value="30"),

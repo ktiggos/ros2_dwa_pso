@@ -354,6 +354,8 @@ void DwaPsoPlanner::get_params() {
     this->declare_parameter<double>("progress_weight", this->w_prog);
     this->declare_parameter<double>("clearence_weight", this->w_clear);
 
+    this->declare_parameter<bool>("reject_oob_trajectories", this->REJECT_OOB);
+
     this->declare_parameter<int>("imax", static_cast<int>(this->imax));
     this->declare_parameter<int>("n_par", this->n_par);
 
@@ -382,6 +384,8 @@ void DwaPsoPlanner::get_params() {
     this->get_parameter("velocity_weight", this->w_vel);
     this->get_parameter("progress_weight", this->w_prog);
     this->get_parameter("clearence_weight", this->w_clear);
+
+    this->get_parameter("reject_oob_trajectories", this->REJECT_OOB);
 
     int imax_tmp;
     this->get_parameter("imax", imax_tmp);
