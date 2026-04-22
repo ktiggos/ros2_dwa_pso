@@ -108,6 +108,10 @@ class DwaPsoPlanner : public rclcpp::Node {
 
         void update_osc_memory(const double v, const double w);
 
+        // Debug functions
+        void debug_bruteforce_line_scan(const nav_msgs::msg::Odometry& odom_local);
+        void debug_bruteforce_grid_scan(const nav_msgs::msg::Odometry& odom_local);
+
         rclcpp::CallbackGroup::SharedPtr sub_group_;
         rclcpp::CallbackGroup::SharedPtr planner_group_;
 
