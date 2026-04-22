@@ -175,7 +175,7 @@ class DwaPsoPlanner : public rclcpp::Node {
 
         // TBD PARAMS
         int thr_cost{80};
-        double osc_reset_dist{0.17}, osc_reset_angle{0.15};
+        double osc_reset_dist{0.1}, osc_reset_angle{0.1};
         /*
         -------------- ROS params --------------
         */
