@@ -84,7 +84,7 @@ void DwaPsoPlanner::plannerCB()
         return;
     }
 
-    this->wnd_curr = this->compute_dynamic_window(odom);
+    this->wnd_curr = this->compute_dynamic_window(this->odom);
 
     geometry_msgs::msg::Twist cmd_vel;
 
@@ -350,7 +350,7 @@ void DwaPsoPlanner::get_params() {
     this->declare_parameter<double>("heading_weight", this->w_head);
     this->declare_parameter<double>("velocity_weight", this->w_vel);
     this->declare_parameter<double>("progress_weight", this->w_prog);
-    this->declare_parameter<double>("clearence_weight", this->w_vel);
+    this->declare_parameter<double>("clearence_weight", this->w_clear);
 
     this->declare_parameter<int>("imax", static_cast<int>(this->imax));
     this->declare_parameter<int>("n_par", this->n_par);
