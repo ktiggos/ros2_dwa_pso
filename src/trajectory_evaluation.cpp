@@ -308,7 +308,7 @@ double DwaPsoPlanner::progress_cost(const double x_hat, const double y_hat){
 
     const double d_hat = std::hypot(xg - x_hat, yg - y_hat);
 
-    return this->w_prog * std::min(d_hat / d0, 1.0);
+    return this->w_prog * (d_hat / d0);
 }
 
 double DwaPsoPlanner::oscillation_cost(const double w){
