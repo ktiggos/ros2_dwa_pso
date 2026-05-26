@@ -25,6 +25,9 @@ class PlannerMetrics(Node):
             self.UpdateOdomCB
         )
     
+    def __del__(self):
+        print(self.path)
+    
     def odomCB(self, msg: Odometry):
         self.odom_msg = msg
 
