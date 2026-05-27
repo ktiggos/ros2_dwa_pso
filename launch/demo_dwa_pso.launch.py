@@ -24,8 +24,8 @@ def generate_launch_description():
 
         DeclareLaunchArgument("heading_weight",     default_value="1.0"),
         DeclareLaunchArgument("velocity_weight",    default_value="2.0"),
-        DeclareLaunchArgument("progress_weight",    default_value="2.0"),
-        DeclareLaunchArgument("clearence_weight",    default_value="2.0"),
+        DeclareLaunchArgument("progress_weight",    default_value="2.5"),
+        DeclareLaunchArgument("clearence_weight",    default_value="1.5"),
 
         DeclareLaunchArgument("reject_oob_trajectories", default_value="False"),
 
