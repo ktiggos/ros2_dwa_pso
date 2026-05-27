@@ -3,6 +3,7 @@ import rclpy
 
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
+from geometry_msgs.msg import Twist
 
 class PlannerMetrics(Node):
 
@@ -10,6 +11,7 @@ class PlannerMetrics(Node):
         super().__init__('planner_metrics')
 
         self.odom_msg = Odometry()
+        self.cmd_msg = Twist()
 
         self.path = list()
 
@@ -19,17 +21,27 @@ class PlannerMetrics(Node):
             self.odomCB,
             10
         )
+        self.cmd_sub = self.create_subscription(
+            Twist,
+            'cmd_vel',
+            self.cmdCB,
+            10
+        )
 
         self.update_odom_timer = self.create_timer(
             1.0,
             self.UpdateOdomCB
         )
+        
     
     def __del__(self):
         print(self.path)
     
     def odomCB(self, msg: Odometry):
         self.odom_msg = msg
+
+    def cmdCB(self, msg: Twist):
+        self.cmd_msg = msg
 
     def UpdateOdomCB(self):
         x = self.odom_msg.pose.pose.position.x
