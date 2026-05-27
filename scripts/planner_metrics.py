@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import pandas as pd
+from pathlib import Path
 
 import rclpy
 
@@ -7,10 +8,18 @@ from rclpy.node import Node
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
 
+from ament_index_python import get_package_prefix
+
 class PlannerMetrics(Node):
 
     def __init__(self):
         super().__init__('planner_metrics')
+
+        prefix = Path(get_package_prefix('ros2_dwa_pso'))
+        prefix_ws = prefix.parent.parent
+
+        self.csv_path = prefix_ws / 'src' / 'ros2_dwa_pso' / 'metrics'
+        self.csv_path.mkdir(parents=True, exist_ok=True)
 
         self.odom_msg = Odometry()
         self.cmd_msg = Twist()
@@ -20,7 +29,6 @@ class PlannerMetrics(Node):
 
         self.cmd_count = 0
         self.odom_count = 0
-        self.csv_path = "../metrics/"
 
         self.odom_sub  = self.create_subscription(
             Odometry,
@@ -44,10 +52,6 @@ class PlannerMetrics(Node):
             1.0,
             self.UpdateCmdCB
         )
-        
-    def __del__(self):
-        pass
-        
     
     def odomCB(self, msg: Odometry):
         self.odom_msg = msg
@@ -82,9 +86,12 @@ class PlannerMetrics(Node):
         v = self.cmd_msg.linear.x
         omega = self.cmd_msg.angular.z
 
+        stamp = self.get_clock().now().nanoseconds * 1e-9
+        
+
         if v > 1e-3:
             self.time_data.loc[self.cmd_count] = [
-                self.get_clock().now(),
+                stamp,
                 v,
                 omega
             ]
@@ -92,9 +99,27 @@ class PlannerMetrics(Node):
             print(f"CMD SIZE: {self.time_data.shape[0]}x{self.time_data.shape[1]}\n")
             self.cmd_count += 1
 
+    def save_data(self):
+        self.path_data.to_csv(self.csv_path / "path_data.csv",
+                              encoding='utf-8',
+                              index=False
+        )
+        self.time_data.to_csv(self.csv_path / "time_data.csv",
+                              encoding='utf-8',
+                              index=False
+        )
+        print("CSV files saved.")
+
 if __name__ == "__main__":
     rclpy.init(args=None)
 
     planner_metrics_node = PlannerMetrics()
     
-    rclpy.spin(planner_metrics_node)
+    try:
+        rclpy.spin(planner_metrics_node)
+    except KeyboardInterrupt:
+        print("\nShutting down planner_metrics node ...")
+    finally:
+        planner_metrics_node.save_data()
+        planner_metrics_node.destroy_node()
+        rclpy.shutdown()
