@@ -29,6 +29,7 @@ class PlannerMetrics(Node):
 
         self.cmd_count = 0
         self.odom_count = 0
+        self.update_time = 0.5
 
         self.odom_sub  = self.create_subscription(
             Odometry,
@@ -44,12 +45,12 @@ class PlannerMetrics(Node):
         )
 
         self.update_odom_timer = self.create_timer(
-            1.0,
+            self.update_time,
             self.UpdateOdomCB
         )
 
         self.update_cmd_timer = self.create_timer(
-            1.0,
+            self.update_time,
             self.UpdateCmdCB
         )
     
