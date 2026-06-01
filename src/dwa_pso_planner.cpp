@@ -171,7 +171,7 @@ void DwaPsoPlanner::odomCB(const nav_msgs::msg::Odometry::SharedPtr msg) {
 
 void DwaPsoPlanner::costmapCB(const nav_msgs::msg::OccupancyGrid::SharedPtr msg) {
     std::lock_guard<std::mutex> lk(costmap_mtx);
-    last_costmap = * msg;
+    last_costmap = *msg;
     have_costmap.store(true, std::memory_order_release);
 }
 

@@ -44,7 +44,7 @@ double DwaPsoPlanner::eval_cost(const double v, const double w, const size_t k)
     this->tcurr.info.COLLISION = TRAJ_COLLISION;
 
     const uint q = (TRAJ_COLLISION) ? 1 : 0;
-    const double penalty = 100 * std::pow(beta_(q),2);
+    const double penalty = alpha_(k)* std::pow(beta_(q),2);
 
     std::vector<double> costs;
     costs.push_back(velocity_cost(t.vel.v));
