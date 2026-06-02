@@ -151,7 +151,7 @@ void DwaPsoPlanner::plannerCB()
 
     cmd_pub_->publish(cmd_vel);
 
-    auto delta_t = (this->now() - t0).seconds();
+    this->delta_t = (this->now() - t0).seconds();
 
     // RCLCPP_INFO(this->get_logger(), "%f", delta_t);
 }
