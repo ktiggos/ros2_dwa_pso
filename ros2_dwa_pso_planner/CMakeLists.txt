@@ -59,7 +59,7 @@ install(DIRECTORY
 )
 
 install(PROGRAMS
-  scripts/planner_metrics.py
+  scripts/metrics_wrapper.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
