@@ -14,7 +14,6 @@ find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
-find_package(rosidl_default_generators REQUIRED)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -27,11 +26,6 @@ if(BUILD_TESTING)
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
-
-rosidl_generate_interfaces(
-  ${PROJECT_NAME}
-  "msg/Metrics.msg"
-)
 
 add_executable(dwa_pso_planner
   src/dwa_pso_planner.cpp
@@ -51,10 +45,6 @@ target_include_directories(dwa_pso_planner
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
-
-# Link custom messages for same-package compilation
-rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
-target_link_libraries(dwa_pso_planner "${cpp_typesupport_target}")
 
 install(TARGETS
   dwa_pso_planner
