@@ -1,0 +1,2 @@
+int64 robot_clearence
+float64 planner_comp_time
