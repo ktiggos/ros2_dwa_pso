@@ -52,6 +52,10 @@ target_include_directories(dwa_pso_planner
     $<INSTALL_INTERFACE:include>
 )
 
+# Link custom messages for same-package compilation
+rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
+target_link_libraries(dwa_pso_planner "${cpp_typesupport_target}")
+
 install(TARGETS
   dwa_pso_planner
   DESTINATION lib/${PROJECT_NAME}
