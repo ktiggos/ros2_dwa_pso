@@ -417,6 +417,6 @@ void DwaPsoPlanner::pub_path(){
 void DwaPsoPlanner::pub_metrics(){
     planner_interfaces::msg::Metrics msg;
     msg.robot_clearence = this->robot_clearence;
-    msg.comp_time = this->delta_t;
+    msg.comp_time = this->comp_time;
     metrics_pub_->publish(msg);
 }

@@ -136,7 +136,7 @@ class DwaPsoPlanner : public rclcpp::Node {
         window wnd_curr;
 
         double robot_clearence{0.0};
-        double delta_t{0.0};
+        double comp_time{0.0};
 
         // Oscillation memory
         int last_v_sign{0};   // -1, 0, +1

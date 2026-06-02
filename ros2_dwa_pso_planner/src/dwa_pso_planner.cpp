@@ -73,7 +73,6 @@ DwaPsoPlanner::DwaPsoPlanner()
 
 void DwaPsoPlanner::plannerCB()
 {
-    auto t0 = this->now();
 
     if(this->have_odom.load(std::memory_order_acquire)) {
         std::lock_guard<std::mutex> lk(this->odom_mtx);
@@ -102,10 +101,18 @@ void DwaPsoPlanner::plannerCB()
     // cmd_vel.angular.y = 0.0;
     // cmd_vel.angular.z = 0.0;
 
+    auto t0 = this->now();
     cmd_vel = this->pso_optimize_cmd(this->wnd_curr);
     // cmd_vel = this->grid_optimize_cmd(this->odom);
+    this->comp_time = (this->now() - t0).seconds();
+
+    double x = this->odom.pose.pose.position.x;
+    double y = this->odom.pose.pose.position.y;
+
+    this->robot_clearence = this->get_cell_val(x,y);
 
     this->pub_path();
+    this->pub_metrics();
     
     RCLCPP_INFO(this->get_logger(),"%s", "##################################");
     RCLCPP_INFO(this->get_logger(),"%s", "----------------------------------");
@@ -155,8 +162,6 @@ void DwaPsoPlanner::plannerCB()
     #endif
 
     cmd_pub_->publish(cmd_vel);
-
-    this->delta_t = (this->now() - t0).seconds();
 
 }
 
