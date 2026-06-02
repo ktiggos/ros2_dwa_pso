@@ -81,6 +81,7 @@ class DwaPsoPlanner : public rclcpp::Node {
         window compute_dynamic_window(const nav_msgs::msg::Odometry& odom);
 
         geometry_msgs::msg::Twist pso_optimize_cmd(const window& wnd);
+        geometry_msgs::msg::Twist grid_optimize_cmd(const nav_msgs::msg::Odometry& odom_local);
 
         double eval_cost(const double v, const double w, const size_t k);
 

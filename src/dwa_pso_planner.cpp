@@ -98,6 +98,7 @@ void DwaPsoPlanner::plannerCB()
     // cmd_vel.angular.z = 0.0;
 
     cmd_vel = this->pso_optimize_cmd(this->wnd_curr);
+    // cmd_vel = this->grid_optimize_cmd(this->odom);
 
     this->pub_path();
 
@@ -343,7 +344,53 @@ geometry_msgs::msg::Twist DwaPsoPlanner::pso_optimize_cmd(const window& wnd)
     return out;
 }
 
+geometry_msgs::msg::Twist DwaPsoPlanner::grid_optimize_cmd(
+    const nav_msgs::msg::Odometry& odom_local
+)
+{
+    constexpr int NV = 21;
+    constexpr int NW = 21;
 
+    geometry_msgs::msg::Twist cmd{};
+
+    const double v_min = this->wnd_curr.v_min;
+    const double v_max = this->wnd_curr.v_max;
+    const double w_min = this->wnd_curr.w_min;
+    const double w_max = this->wnd_curr.w_max;
+
+    if ((v_max - v_min) < 1e-9 || (w_max - w_min) < 1e-9) {
+        cmd.linear.x = 0.0;
+        cmd.angular.z = 0.0;
+        return cmd;
+    }
+
+    double best_v = 0.0;
+    double best_w = 0.0;
+    double best_J = std::numeric_limits<double>::infinity();
+
+    for (int iw = 0; iw < NW; ++iw) {
+        const double aw = static_cast<double>(iw) / static_cast<double>(NW - 1);
+        const double w = w_min + aw * (w_max - w_min);
+
+        for (int iv = 0; iv < NV; ++iv) {
+            const double av = static_cast<double>(iv) / static_cast<double>(NV - 1);
+            const double v = v_min + av * (v_max - v_min);
+
+            double J_total = this->eval_cost(v,w,1);
+
+            if (J_total < best_J) {
+                best_J = J_total;
+                best_v = v;
+                best_w = w;
+            }
+        }
+    }
+
+    cmd.linear.x = best_v;
+    cmd.angular.z = best_w;
+
+    return cmd;
+}
 
 void DwaPsoPlanner::get_params() {
 
