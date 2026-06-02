@@ -101,7 +101,7 @@ void DwaPsoPlanner::plannerCB()
     // cmd_vel = this->grid_optimize_cmd(this->odom);
 
     this->pub_path();
-
+    
     RCLCPP_INFO(this->get_logger(),"%s", "##################################");
     RCLCPP_INFO(this->get_logger(),"%s", "----------------------------------");
     RCLCPP_INFO(this->get_logger(),"ODOM: (%f)", odom.twist.twist.linear.x);
@@ -120,14 +120,6 @@ void DwaPsoPlanner::plannerCB()
     // Optional safety: keep command inside window bounds
     cmd_vel.linear.x  = std::clamp(cmd_vel.linear.x,  wnd_curr.v_min, wnd_curr.v_max);
     cmd_vel.angular.z = std::clamp(cmd_vel.angular.z, wnd_curr.w_min, wnd_curr.w_max);
-
-    // RCLCPP_INFO(this->get_logger(),
-    // "v_curr=%f  dv=%f  vmin=%f  vmax=%f v_cmd=%f",
-    // odom.twist.twist.linear.x,
-    // this->limits.max_acc.linear * (this->dt_ms * 1e-3),
-    // wnd.v_min,
-    // wnd.v_max,
-    // cmd_vel.linear.x);
 
     // Terminate cmd when goal reached
     double dx = goal.x - odom.pose.pose.position.x;

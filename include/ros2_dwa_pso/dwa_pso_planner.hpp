@@ -72,23 +72,25 @@ class DwaPsoPlanner : public rclcpp::Node {
         };
     
     private:
+        // ROS callback functions
         void odomCB(const nav_msgs::msg::Odometry::SharedPtr msg);
-
         void costmapCB(const nav_msgs::msg::OccupancyGrid::SharedPtr msg);
 
+        // Timer Callback - Main controller loop function
         void plannerCB();
 
         window compute_dynamic_window(const nav_msgs::msg::Odometry& odom);
 
+        // Optimization functions - PSO and grid-scan methods
         geometry_msgs::msg::Twist pso_optimize_cmd(const window& wnd);
         geometry_msgs::msg::Twist grid_optimize_cmd(const nav_msgs::msg::Odometry& odom_local);
 
         double eval_cost(const double v, const double w, const size_t k);
-
         trajectory eval_trajectory(const nav_msgs::msg::Odometry& odom,
             const double v, const double w
         );
 
+        // Cost-calculation functions
         double velocity_cost(const double v);
         double heading_cost(const trajectory& t);
         double clearence_cost(const trajectory& t);
@@ -96,7 +98,6 @@ class DwaPsoPlanner : public rclcpp::Node {
         double oscillation_cost(const double w);
 
         bool check_collision(const trajectory& t);
-
         int get_cell_val(double x, double y);
 
         void get_params();
@@ -104,9 +105,7 @@ class DwaPsoPlanner : public rclcpp::Node {
         void pub_path();
 
         bool check_osc_reset() const;
-
         void reset_osc_state();
-
         void update_osc_memory(const double v, const double w);
 
         // Debug functions
@@ -133,6 +132,9 @@ class DwaPsoPlanner : public rclcpp::Node {
         trajectory tcurr, tbest;
         window wnd_curr;
 
+        double robot_clearence{0.0};
+        double delta_t{0.0};
+
         // Oscillation memory
         int last_v_sign{0};   // -1, 0, +1
         int last_w_sign{0};   // -1, 0, +1
@@ -144,6 +146,7 @@ class DwaPsoPlanner : public rclcpp::Node {
 
         // Init flag
         bool osc_initialized{false};
+
 
         /*
         -------------- ROS params --------------
