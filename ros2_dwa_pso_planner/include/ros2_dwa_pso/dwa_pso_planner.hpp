@@ -8,6 +8,7 @@
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <nav_msgs/msg/path.hpp>
+#include <planner_interfaces/msg/metrics.hpp>
 #include <mutex>
 #include <atomic>
 
@@ -103,6 +104,7 @@ class DwaPsoPlanner : public rclcpp::Node {
         void get_params();
 
         void pub_path();
+        void pub_metrics();
 
         bool check_osc_reset() const;
         void reset_osc_state();
@@ -119,6 +121,7 @@ class DwaPsoPlanner : public rclcpp::Node {
         rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr costmap_sub_;
         rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_pub_;
         rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
+        rclcpp::Publisher<planner_interfaces::msg::Metrics>::SharedPtr metrics_pub_;
         rclcpp::TimerBase::SharedPtr planner_timer_;
 
         std::mutex odom_mtx;

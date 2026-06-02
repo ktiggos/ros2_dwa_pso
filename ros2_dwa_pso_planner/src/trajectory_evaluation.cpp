@@ -413,3 +413,10 @@ void DwaPsoPlanner::pub_path(){
     this->tbest.path.header.stamp = this->now();
     path_pub_->publish(this->tbest.path);
 }
+
+void DwaPsoPlanner::pub_metrics(){
+    planner_interfaces::msg::Metrics msg;
+    msg.robot_clearence = this->robot_clearence;
+    msg.comp_time = this->delta_t;
+    metrics_pub_->publish(msg);
+}

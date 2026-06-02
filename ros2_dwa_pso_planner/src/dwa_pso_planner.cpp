@@ -55,7 +55,12 @@ DwaPsoPlanner::DwaPsoPlanner()
     path_pub_ = this->create_publisher<nav_msgs::msg::Path>(
         "/path",
         rclcpp::QoS(10)
-    ),
+    );
+
+    metrics_pub_ = this->create_publisher<planner_interfaces::msg::Metrics>(
+        "/planner_metrics",
+        rclcpp::QoS(10)
+    );
 
     planner_timer_ = this->create_wall_timer(
         std::chrono::milliseconds((int64_t)dt_ms),
@@ -151,9 +156,8 @@ void DwaPsoPlanner::plannerCB()
 
     cmd_pub_->publish(cmd_vel);
 
-    auto delta_t = (this->now() - t0).seconds();
+    this->delta_t = (this->now() - t0).seconds();
 
-    // RCLCPP_INFO(this->get_logger(), "%f", delta_t);
 }
 
 void DwaPsoPlanner::odomCB(const nav_msgs::msg::Odometry::SharedPtr msg) {
